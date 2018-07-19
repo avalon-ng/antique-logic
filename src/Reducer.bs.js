@@ -2,6 +2,7 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
+var Caml_int32 = require("bs-platform/lib/js/caml_int32.js");
 var Json_decode = require("@glennsl/bs-json/src/Json_decode.bs.js");
 var Json_encode = require("@glennsl/bs-json/src/Json_encode.bs.js");
 
@@ -12,6 +13,7 @@ var initState = /* record */[
     /* b */0
   ],
   /* name */"just started",
+  /* activePlayer */0,
   /* playerCount */6
 ];
 
@@ -32,39 +34,111 @@ function testAction(json) {
   }
 }
 
-var Decode = /* module */[/* testAction */testAction];
+function gameState(json) {
+  var match = Json_decode.field("state", Json_decode.string, json);
+  var tmp;
+  switch (match) {
+    case "end" : 
+        tmp = /* End */4;
+        break;
+    case "init" : 
+        tmp = /* Init */0;
+        break;
+    case "turn_action" : 
+        tmp = /* TurnAction */1;
+        break;
+    case "vote_animal" : 
+        tmp = /* VoteAnimal */2;
+        break;
+    case "vote_player" : 
+        tmp = /* VotePlayer */3;
+        break;
+    default:
+      tmp = /* Error */5;
+  }
+  return /* record */[
+          /* state */tmp,
+          /* nested : record */[
+            /* a */0,
+            /* b */0
+          ],
+          /* name */"just started",
+          /* activePlayer */Json_decode.field("activePlayer", Json_decode.$$int, json),
+          /* playerCount */Json_decode.field("playerCount", Json_decode.$$int, json)
+        ];
+}
 
-function gameState(state) {
+var Decode = /* module */[
+  /* testAction */testAction,
+  /* gameState */gameState
+];
+
+function gameState$1(state) {
+  var match = state[/* state */0];
+  var tmp;
+  switch (match) {
+    case 0 : 
+        tmp = "init";
+        break;
+    case 1 : 
+        tmp = "turn_action";
+        break;
+    case 2 : 
+        tmp = "vote_animal";
+        break;
+    case 3 : 
+        tmp = "vote_player";
+        break;
+    case 4 : 
+        tmp = "end";
+        break;
+    case 5 : 
+        tmp = "error";
+        break;
+    
+  }
   return Json_encode.object_(/* :: */[
               /* tuple */[
-                "name",
-                state[/* name */2]
+                "state",
+                tmp
               ],
               /* :: */[
                 /* tuple */[
-                  "payload",
-                  Json_encode.object_(/* :: */[
-                        /* tuple */[
-                          "a",
-                          state[/* nested */1][/* a */0]
-                        ],
-                        /* :: */[
-                          /* tuple */[
-                            "b",
-                            state[/* nested */1][/* b */1]
-                          ],
-                          /* [] */0
-                        ]
-                      ])
+                  "name",
+                  state[/* name */2]
                 ],
-                /* [] */0
+                /* :: */[
+                  /* tuple */[
+                    "activePlayer",
+                    state[/* activePlayer */3]
+                  ],
+                  /* :: */[
+                    /* tuple */[
+                      "payload",
+                      Json_encode.object_(/* :: */[
+                            /* tuple */[
+                              "a",
+                              state[/* nested */1][/* a */0]
+                            ],
+                            /* :: */[
+                              /* tuple */[
+                                "b",
+                                state[/* nested */1][/* b */1]
+                              ],
+                              /* [] */0
+                            ]
+                          ])
+                    ],
+                    /* [] */0
+                  ]
+                ]
               ]
             ]);
 }
 
-var Encode = /* module */[/* gameState */gameState];
+var Encode = /* module */[/* gameState */gameState$1];
 
-var toJs = gameState;
+var toJs = gameState$1;
 
 var fromJs = testAction;
 
@@ -78,24 +152,27 @@ function reduce$prime$prime(state, action) {
                   /* b */0
                 ],
                 /* name */"just started",
+                /* activePlayer */0,
                 /* playerCount */action[0]
               ];
     case 1 : 
         return /* record */[
-                /* state */state[/* state */0],
+                /* state : TurnAction */1,
                 /* nested */state[/* nested */1],
                 /* name */action[0],
-                /* playerCount */state[/* playerCount */3]
+                /* activePlayer */state[/* activePlayer */3],
+                /* playerCount */state[/* playerCount */4]
               ];
     case 2 : 
         return /* record */[
-                /* state */state[/* state */0],
+                /* state : VotePlayer */3,
                 /* nested : record */[
-                  /* a */action[0] + 1 | 0,
-                  /* b */(action[1] << 1)
+                  /* a */Caml_int32.imul(state[/* nested */1][/* a */0] + 1 | 0, action[0]),
+                  /* b */Caml_int32.imul(Caml_int32.imul(state[/* nested */1][/* b */1], action[1]) + 2 | 0, -1)
                 ],
                 /* name */state[/* name */2],
-                /* playerCount */state[/* playerCount */3]
+                /* activePlayer */state[/* activePlayer */3],
+                /* playerCount */state[/* playerCount */4]
               ];
     
   }
@@ -116,7 +193,9 @@ function reduce$prime(state, jsAction) {
 }
 
 function reduce(state, jsAction) {
-  return gameState(reduce$prime(state, jsAction));
+  var result = reduce$prime(state, jsAction);
+  console.log(gameState$1(result));
+  return result;
 }
 
 exports.initState = initState;

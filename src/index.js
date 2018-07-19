@@ -25,10 +25,12 @@ let state = reduce(null, {
   type: 'init',
   playerCount: 8,
 });
-console.log(state);
 state = reduce(state, {
   type: 'dramatic_action',
   a: 1, b: 2,
 });
-console.log(state);
+state = reduce(state, {
+  type: 'update_name',
+  name: 'updated name',
+});
 // console.log(toJs(state));
