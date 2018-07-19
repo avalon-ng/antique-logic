@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_mapperRt = require("bs-platform/lib/js/js_mapperRt.js");
-var Js_primitive = require("bs-platform/lib/js/js_primitive.js");
 
 var jsMapperConstantArray = /* array */[
   /* tuple */[
@@ -41,24 +40,61 @@ console.log(gameStepToJs(/* Init */815032112));
 
 function init(playerCount) {
   return {
-          state: /* Init */815032112,
+          state: gameStepToJs(/* Init */815032112),
           playerCount: playerCount
         };
+}
+
+function endGame() {
+  return {
+          state: gameStepToJs(/* End */3455931),
+          playerCount: 0
+        };
+}
+
+function turnAction(_, _$1) {
+  var partial_arg = gameStepToJs(/* TurnAction */575593267);
+  return (function (param) {
+      return {
+              state: partial_arg,
+              playerCount: param
+            };
+    });
 }
 
 function gameReducer(state, action) {
   var match = gameStepFromJs(action.type);
   if (match !== undefined) {
-    if (match !== 815032112) {
-      return Js_primitive.some(state);
+    var s = match;
+    if (s !== 3455931) {
+      if (s !== 575593267) {
+        if (s !== 815032112) {
+          return state;
+        } else {
+          return {
+                  state: gameStepToJs(/* Init */815032112),
+                  playerCount: 8
+                };
+        }
+      } else {
+        console.log("action");
+        console.log(action);
+        return {
+                state: gameStepToJs(/* End */3455931),
+                playerCount: 0
+              };
+      }
     } else {
+      console.log("action");
+      console.log(action);
       return {
-              state: /* Init */815032112,
-              playerCount: 8
+              state: gameStepToJs(/* End */3455931),
+              playerCount: 0
             };
     }
+  } else {
+    return state;
   }
-
 }
 
 var s = "安安";
@@ -67,5 +103,7 @@ exports.s = s;
 exports.gameStepToJs = gameStepToJs;
 exports.gameStepFromJs = gameStepFromJs;
 exports.init = init;
+exports.endGame = endGame;
+exports.turnAction = turnAction;
 exports.gameReducer = gameReducer;
 /*  Not a pure module */

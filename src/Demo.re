@@ -20,16 +20,28 @@ type action = {
 
 [@bs.deriving abstract]
 type gameState = {
-  state: gameStep,
+  state: string,
   playerCount: int,
 };
 
-let init = playerCount => gameState(~state=`Init, ~playerCount=playerCount);
+let init = playerCount => gameState(~state=gameStepToJs(`Init), ~playerCount=playerCount);
+
+let endGame = () => gameState(~state=gameStepToJs(`End), ~playerCount=0);
+
+let turnAction = (state, action) => {
+  gameState(
+    ~state=gameStepToJs(`TurnAction),
+  )
+};
 
 let gameReducer = (state, action) => switch(gameStepFromJs(action |. type_Get)) {
-  | Some(`Init) => Some(init(8))
-  | Some(_) => Some(state)
-  | None => None
+  | Some(s) => switch(s) {
+    | `Init => init(8)
+    | `End => {Js.log("action");Js.log(action);endGame()}
+    | `TurnAction => {Js.log("action");Js.log(action);endGame()}
+    | _ => state
+    }
+  | None => state
 };
 
 /* Js.log(gameReducer(action(~type_="End"))) */
