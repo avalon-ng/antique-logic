@@ -48,7 +48,7 @@ var game_003 = /* roles : array */[];
 var game_004 = /* players : array */[];
 
 var game = /* record */[
-  /* state : Init */0,
+  /* phase : Preparation */0,
   /* activePlayer */0,
   /* playerCount */6,
   game_003,
@@ -56,6 +56,14 @@ var game = /* record */[
 ];
 
 var InitState = /* module */[/* game */game];
+
+function meta(json) {
+  return /* record */[/* playerIndex */Json_decode.field("playerIndex", Json_decode.$$int, json)];
+}
+
+function actionMeta(json) {
+  return Json_decode.field("meta", meta, json);
+}
 
 function action(json) {
   var match = Json_decode.field("type", Json_decode.string, json);
@@ -72,7 +80,11 @@ function action(json) {
   }
 }
 
-var Decode = /* module */[/* action */action];
+var Decode = /* module */[
+  /* meta */meta,
+  /* actionMeta */actionMeta,
+  /* action */action
+];
 
 function role(role$1) {
   switch (role$1) {
@@ -110,7 +122,7 @@ function player(player$1) {
                 /* :: */[
                   /* tuple */[
                     "parternerIndex",
-                    player$1[/* parternerIndex */2]
+                    player$1[/* parternerIndex */3]
                   ],
                   /* [] */0
                 ]
@@ -119,29 +131,38 @@ function player(player$1) {
 }
 
 function game$1(state) {
-  var match = state[/* state */0];
+  var match = state[/* phase */0];
   var tmp;
   switch (match) {
     case 0 : 
-        tmp = "init";
+        tmp = "preparation";
         break;
     case 1 : 
-        tmp = "turn_action";
+        tmp = "turn_upkeep";
         break;
     case 2 : 
-        tmp = "vote_zodiac";
+        tmp = "turn";
         break;
     case 3 : 
-        tmp = "vote_player";
+        tmp = "speak";
         break;
     case 4 : 
-        tmp = "end";
+        tmp = "vote_treasure";
+        break;
+    case 5 : 
+        tmp = "vote_result";
+        break;
+    case 6 : 
+        tmp = "vote_role";
+        break;
+    case 7 : 
+        tmp = "end_game";
         break;
     
   }
   return Json_encode.object_(/* :: */[
               /* tuple */[
-                "state",
+                "phase",
                 tmp
               ],
               /* :: */[
@@ -179,67 +200,91 @@ var Encode = /* module */[
 ];
 
 function reduce$prime(state, action) {
-  if (action.tag) {
-    return /* record */[
-            /* state : VotePlayer */3,
-            /* activePlayer */state[/* activePlayer */1],
-            /* playerCount */Caml_int32.imul(action[0], action[1]),
-            /* roles */state[/* roles */3],
-            /* players */state[/* players */4]
-          ];
-  } else {
-    var playerCount = action[0];
-    var roles$1 = Belt_Array.shuffle((function (param) {
-              return Belt_Array.slice(param, 0, playerCount);
-            })(roles));
-    var roleIndexes = Belt_Array.mapWithIndex(roles$1, (function (i, role) {
-            return /* tuple */[
-                    role,
-                    i
-                  ];
-          }));
-    var roleMap = Belt_Map.fromArray(roleIndexes, RoleCmp);
-    var players = Belt_Array.map(roles$1, (function (role) {
-            var tmp;
-            if (role >= 5) {
-              switch (role - 5 | 0) {
-                case 0 : 
-                    tmp = Belt_Map.getWithDefault(roleMap, /* YaoBuRan */6, -1);
-                    break;
-                case 1 : 
-                    tmp = Belt_Map.getWithDefault(roleMap, /* LaoChaoFeng */5, -1);
-                    break;
-                case 2 : 
-                    tmp = -1;
-                    break;
-                
-              }
-            } else {
-              tmp = -1;
-            }
-            return /* record */[
-                    /* role */role,
-                    /* drugged */false,
-                    /* parternerIndex */tmp,
-                    /* actionHistory : array */[]
-                  ];
-          }));
-    return /* record */[
-            /* state : Init */0,
-            /* activePlayer */Js_math.random_int(0, playerCount),
-            /* playerCount */playerCount,
-            /* roles */roles$1,
-            /* players */players
-          ];
+  switch (action.tag | 0) {
+    case 0 : 
+        var playerCount = action[0];
+        var roles$1 = Belt_Array.shuffle((function (param) {
+                  return Belt_Array.slice(param, 0, playerCount);
+                })(roles));
+        var roleIndexes = Belt_Array.mapWithIndex(roles$1, (function (i, role) {
+                return /* tuple */[
+                        role,
+                        i
+                      ];
+              }));
+        var roleMap = Belt_Map.fromArray(roleIndexes, RoleCmp);
+        var players = Belt_Array.map(roles$1, (function (role) {
+                var tmp;
+                if (role >= 5) {
+                  switch (role - 5 | 0) {
+                    case 0 : 
+                        tmp = Belt_Map.getWithDefault(roleMap, /* YaoBuRan */6, -1);
+                        break;
+                    case 1 : 
+                        tmp = Belt_Map.getWithDefault(roleMap, /* LaoChaoFeng */5, -1);
+                        break;
+                    case 2 : 
+                        tmp = -1;
+                        break;
+                    
+                  }
+                } else {
+                  tmp = -1;
+                }
+                return /* record */[
+                        /* role */role,
+                        /* drugged */false,
+                        /* blind */role === 3 || role === 2 ? Js_math.random_int(0, 3) : -1,
+                        /* parternerIndex */tmp,
+                        /* actionHistory : array */[]
+                      ];
+              }));
+        return /* record */[
+                /* phase : Preparation */0,
+                /* activePlayer */Js_math.random_int(0, playerCount),
+                /* playerCount */playerCount,
+                /* roles */roles$1,
+                /* players */players
+              ];
+    case 1 : 
+        return /* record */[
+                /* phase : VoteRole */6,
+                /* activePlayer */state[/* activePlayer */1],
+                /* playerCount */Caml_int32.imul(action[0], action[1]),
+                /* roles */state[/* roles */3],
+                /* players */state[/* players */4]
+              ];
+    case 2 : 
+        return state;
+    
+  }
+}
+
+function authorized(index, state, action) {
+  switch (action.tag | 0) {
+    case 0 : 
+        return index === 0;
+    case 1 : 
+        return true;
+    case 2 : 
+        return state[/* activePlayer */1] === index;
+    
   }
 }
 
 function reduce(state, jsAction) {
+  var playerIndex = Json_decode.field("meta", meta, jsAction)[/* playerIndex */0];
   if (state !== undefined) {
     var state$prime = state;
     var match = action(jsAction);
     if (match !== undefined) {
-      return reduce$prime(state$prime, match);
+      var action$1 = match;
+      var match$1 = authorized(playerIndex, state$prime, action$1);
+      if (match$1) {
+        return reduce$prime(state$prime, action$1);
+      } else {
+        return state$prime;
+      }
     } else {
       return state$prime;
     }
@@ -256,6 +301,7 @@ exports.InitState = InitState;
 exports.Decode = Decode;
 exports.Encode = Encode;
 exports.reduce$prime = reduce$prime;
+exports.authorized = authorized;
 exports.reduce = reduce;
 exports.toJs = toJs;
 /* RoleCmp Not a pure module */

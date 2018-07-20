@@ -3,8 +3,8 @@ const { toJs, reduce } = require('./Reducer.bs.js')
 function makeGame(playerCount) {
   let state = null
 
-  return function transform(action) {
-    state = reduce(state, action)
+  return function transition(playerIndex, action) {
+    state = reduce(state, {...action, meta: {playerIndex}})
     const jsState = toJs(state)
     console.log(jsState)
     return jsState
@@ -13,12 +13,12 @@ function makeGame(playerCount) {
 
 const reducer = makeGame(6)
 
-reducer({
+reducer(0, {
   type: 'init',
   playerCount: 6,
 })
 
-reducer({
+reducer(3, {
   type: 'dramatic_action',
   a: 1, b: 2,
 })
