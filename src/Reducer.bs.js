@@ -2,19 +2,34 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_int32 = require("bs-platform/lib/js/caml_int32.js");
 var Json_decode = require("@glennsl/bs-json/src/Json_decode.bs.js");
 var Json_encode = require("@glennsl/bs-json/src/Json_encode.bs.js");
 
+var roles = /* array */[
+  /* XuYuan */0,
+  /* FangZhen */1,
+  /* MuHuJiaNai */2,
+  /* HuangYanYan */3,
+  /* LaoChaoFeng */5,
+  /* YaoBuRan */6,
+  /* ZhengGuoQu */7,
+  /* JiYunFu */4
+];
+
+var initState_001 = /* nested : record */[
+  /* a */0,
+  /* b */0
+];
+
 var initState = /* record */[
   /* state : Init */0,
-  /* nested : record */[
-    /* a */0,
-    /* b */0
-  ],
+  initState_001,
   /* name */"just started",
   /* activePlayer */0,
-  /* playerCount */6
+  /* playerCount */6,
+  /* roles */roles
 ];
 
 function testAction(json) {
@@ -34,46 +49,31 @@ function testAction(json) {
   }
 }
 
-function gameState(json) {
-  var match = Json_decode.field("state", Json_decode.string, json);
-  var tmp;
-  switch (match) {
-    case "end" : 
-        tmp = /* End */4;
-        break;
-    case "init" : 
-        tmp = /* Init */0;
-        break;
-    case "turn_action" : 
-        tmp = /* TurnAction */1;
-        break;
-    case "vote_animal" : 
-        tmp = /* VoteAnimal */2;
-        break;
-    case "vote_player" : 
-        tmp = /* VotePlayer */3;
-        break;
-    default:
-      tmp = /* Error */5;
+var Decode = /* module */[/* testAction */testAction];
+
+function role(role$1) {
+  switch (role$1) {
+    case 0 : 
+        return "xu_yuan";
+    case 1 : 
+        return "fang_zhen";
+    case 2 : 
+        return "mu_hu_jia_nai";
+    case 3 : 
+        return "huang_yan_yan";
+    case 4 : 
+        return "ji_yun_fu";
+    case 5 : 
+        return "lao_chao_feng";
+    case 6 : 
+        return "yao_bu_ran";
+    case 7 : 
+        return "zheng_guo_qu";
+    
   }
-  return /* record */[
-          /* state */tmp,
-          /* nested : record */[
-            /* a */0,
-            /* b */0
-          ],
-          /* name */"just started",
-          /* activePlayer */Json_decode.field("activePlayer", Json_decode.$$int, json),
-          /* playerCount */Json_decode.field("playerCount", Json_decode.$$int, json)
-        ];
 }
 
-var Decode = /* module */[
-  /* testAction */testAction,
-  /* gameState */gameState
-];
-
-function gameState$1(state) {
+function gameState(state) {
   var match = state[/* state */0];
   var tmp;
   switch (match) {
@@ -91,9 +91,6 @@ function gameState$1(state) {
         break;
     case 4 : 
         tmp = "end";
-        break;
-    case 5 : 
-        tmp = "error";
         break;
     
   }
@@ -114,37 +111,46 @@ function gameState$1(state) {
                   ],
                   /* :: */[
                     /* tuple */[
-                      "payload",
-                      Json_encode.object_(/* :: */[
-                            /* tuple */[
-                              "a",
-                              state[/* nested */1][/* a */0]
-                            ],
-                            /* :: */[
-                              /* tuple */[
-                                "b",
-                                state[/* nested */1][/* b */1]
-                              ],
-                              /* [] */0
-                            ]
-                          ])
+                      "roles",
+                      Json_encode.array(role, state[/* roles */5])
                     ],
-                    /* [] */0
+                    /* :: */[
+                      /* tuple */[
+                        "payload",
+                        Json_encode.object_(/* :: */[
+                              /* tuple */[
+                                "a",
+                                state[/* nested */1][/* a */0]
+                              ],
+                              /* :: */[
+                                /* tuple */[
+                                  "b",
+                                  state[/* nested */1][/* b */1]
+                                ],
+                                /* [] */0
+                              ]
+                            ])
+                      ],
+                      /* [] */0
+                    ]
                   ]
                 ]
               ]
             ]);
 }
 
-var Encode = /* module */[/* gameState */gameState$1];
+var Encode = /* module */[
+  /* role */role,
+  /* gameState */gameState
+];
 
-var toJs = gameState$1;
-
-var fromJs = testAction;
-
-function reduce$prime$prime(state, action) {
+function reduce$prime(state, action) {
   switch (action.tag | 0) {
     case 0 : 
+        var playerCount = action[0];
+        var r = Belt_Array.shuffle((function (param) {
+                  return Belt_Array.slice(param, 0, playerCount);
+                })(roles));
         return /* record */[
                 /* state : Init */0,
                 /* nested : record */[
@@ -153,7 +159,8 @@ function reduce$prime$prime(state, action) {
                 ],
                 /* name */"just started",
                 /* activePlayer */0,
-                /* playerCount */action[0]
+                /* playerCount */playerCount,
+                /* roles */(console.log(r), r)
               ];
     case 1 : 
         return /* record */[
@@ -161,7 +168,8 @@ function reduce$prime$prime(state, action) {
                 /* nested */state[/* nested */1],
                 /* name */action[0],
                 /* activePlayer */state[/* activePlayer */3],
-                /* playerCount */state[/* playerCount */4]
+                /* playerCount */state[/* playerCount */4],
+                /* roles */state[/* roles */5]
               ];
     case 2 : 
         return /* record */[
@@ -172,18 +180,21 @@ function reduce$prime$prime(state, action) {
                 ],
                 /* name */state[/* name */2],
                 /* activePlayer */state[/* activePlayer */3],
-                /* playerCount */state[/* playerCount */4]
+                /* playerCount */state[/* playerCount */4],
+                /* roles */state[/* roles */5]
               ];
     
   }
 }
 
-function reduce$prime(state, jsAction) {
+var toJs = gameState;
+
+function reduce(state, jsAction) {
   if (state !== undefined) {
     var state$prime = state;
     var match = testAction(jsAction);
     if (match !== undefined) {
-      return reduce$prime$prime(state$prime, match);
+      return reduce$prime(state$prime, match);
     } else {
       return state$prime;
     }
@@ -192,18 +203,11 @@ function reduce$prime(state, jsAction) {
   }
 }
 
-function reduce(state, jsAction) {
-  var result = reduce$prime(state, jsAction);
-  console.log(gameState$1(result));
-  return result;
-}
-
+exports.roles = roles;
 exports.initState = initState;
 exports.Decode = Decode;
 exports.Encode = Encode;
-exports.toJs = toJs;
-exports.fromJs = fromJs;
-exports.reduce$prime$prime = reduce$prime$prime;
 exports.reduce$prime = reduce$prime;
+exports.toJs = toJs;
 exports.reduce = reduce;
 /* Json_encode Not a pure module */

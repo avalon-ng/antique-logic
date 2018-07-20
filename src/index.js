@@ -1,5 +1,5 @@
 // const { gameStepToJs, gameStepsFromJs, gameReducer } = require('./Demo.bs.js');
-const { fromJs, toJs, reduce } = require('./Reducer.bs.js');
+const { toJs, reduce } = require('./Reducer.bs.js');
 // require('./JsonExample.bs.js');
 
 // let state = gameReducer(null, { type: 'Init' });
@@ -18,18 +18,30 @@ const { fromJs, toJs, reduce } = require('./Reducer.bs.js');
 // console.log(state);
 
 
+function makeGame(playerCount) {
+  let state = null
 
+  return function transform(action) {
+    state = reduce(state, action)
+    const jsState = toJs(state)
+    console.log(jsState)
+    return jsState
+  }
+}
 
+const reducer = makeGame(6)
 
-let state = reduce(null, {
+reducer({
   type: 'init',
-  playerCount: 8,
+  playerCount: 6,
 });
-state = reduce(state, {
+
+reducer({
   type: 'dramatic_action',
   a: 1, b: 2,
 });
-state = reduce(state, {
+
+reducer({
   type: 'update_name',
   name: 'updated name',
 });
