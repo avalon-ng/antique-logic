@@ -2,10 +2,35 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
+var Belt_Id = require("bs-platform/lib/js/belt_Id.js");
+var Js_math = require("bs-platform/lib/js/js_math.js");
+var Belt_Map = require("bs-platform/lib/js/belt_Map.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_int32 = require("bs-platform/lib/js/caml_int32.js");
 var Json_decode = require("@glennsl/bs-json/src/Json_decode.bs.js");
 var Json_encode = require("@glennsl/bs-json/src/Json_encode.bs.js");
+
+function roleNum(role) {
+  if (role >= 5) {
+    switch (role - 5 | 0) {
+      case 0 : 
+          return 0;
+      case 1 : 
+          return 1;
+      case 2 : 
+          return 2;
+      
+    }
+  } else {
+    return 2;
+  }
+}
+
+function cmp(r1, r2) {
+  return roleNum(r1) - roleNum(r2) | 0;
+}
+
+var RoleCmp = Belt_Id.MakeComparable(/* module */[/* cmp */cmp]);
 
 var roles = /* array */[
   /* XuYuan */0,
@@ -23,13 +48,17 @@ var game_001 = /* nested : record */[
   /* b */0
 ];
 
+var game_004 = /* roles : array */[];
+
+var game_005 = /* players : array */[];
+
 var game = /* record */[
   /* state : Init */0,
   game_001,
-  /* name */"just started",
   /* activePlayer */0,
   /* playerCount */6,
-  /* roles */roles
+  game_004,
+  game_005
 ];
 
 var InitState = /* module */[/* game */game];
@@ -38,14 +67,12 @@ function action(json) {
   var match = Json_decode.field("type", Json_decode.string, json);
   switch (match) {
     case "dramatic_action" : 
-        return /* Dramatic */Block.__(2, [
+        return /* Dramatic */Block.__(1, [
                   Json_decode.field("a", Json_decode.$$int, json),
                   Json_decode.field("b", Json_decode.$$int, json)
                 ]);
     case "init" : 
         return /* Init */Block.__(0, [Json_decode.field("playerCount", Json_decode.$$int, json)]);
-    case "update_name" : 
-        return /* UpdateName */Block.__(1, [Json_decode.field("name", Json_decode.string, json)]);
     default:
       return undefined;
   }
@@ -75,7 +102,29 @@ function role(role$1) {
   }
 }
 
-function gameState(state) {
+function player(player$1) {
+  return Json_encode.object_(/* :: */[
+              /* tuple */[
+                "role",
+                role(player$1[/* role */0])
+              ],
+              /* :: */[
+                /* tuple */[
+                  "drugged",
+                  player$1[/* drugged */1]
+                ],
+                /* :: */[
+                  /* tuple */[
+                    "parternerIndex",
+                    player$1[/* parternerIndex */2]
+                  ],
+                  /* [] */0
+                ]
+              ]
+            ]);
+}
+
+function game$1(state) {
   var match = state[/* state */0];
   var tmp;
   switch (match) {
@@ -103,18 +152,18 @@ function gameState(state) {
               ],
               /* :: */[
                 /* tuple */[
-                  "name",
-                  state[/* name */2]
+                  "activePlayer",
+                  state[/* activePlayer */2]
                 ],
                 /* :: */[
                   /* tuple */[
-                    "activePlayer",
-                    state[/* activePlayer */3]
+                    "roles",
+                    Json_encode.array(role, state[/* roles */4])
                   ],
                   /* :: */[
                     /* tuple */[
-                      "roles",
-                      Json_encode.array(role, state[/* roles */5])
+                      "players",
+                      Json_encode.array(player, state[/* players */5])
                     ],
                     /* :: */[
                       /* tuple */[
@@ -143,52 +192,73 @@ function gameState(state) {
 
 var Encode = /* module */[
   /* role */role,
-  /* gameState */gameState
+  /* player */player,
+  /* game */game$1
 ];
 
 function reduce$prime(state, action) {
-  switch (action.tag | 0) {
-    case 0 : 
-        var playerCount = action[0];
-        return /* record */[
-                /* state : Init */0,
-                /* nested : record */[
-                  /* a */0,
-                  /* b */0
-                ],
-                /* name */"just started",
-                /* activePlayer */0,
-                /* playerCount */playerCount,
-                /* roles */Belt_Array.shuffle((function (param) {
-                          return Belt_Array.slice(param, 0, playerCount);
-                        })(roles))
-              ];
-    case 1 : 
-        return /* record */[
-                /* state : TurnAction */1,
-                /* nested */state[/* nested */1],
-                /* name */action[0],
-                /* activePlayer */state[/* activePlayer */3],
-                /* playerCount */state[/* playerCount */4],
-                /* roles */state[/* roles */5]
-              ];
-    case 2 : 
-        return /* record */[
-                /* state : VotePlayer */3,
-                /* nested : record */[
-                  /* a */Caml_int32.imul(state[/* nested */1][/* a */0] + 1 | 0, action[0]),
-                  /* b */Caml_int32.imul(Caml_int32.imul(state[/* nested */1][/* b */1], action[1]) + 2 | 0, -1)
-                ],
-                /* name */state[/* name */2],
-                /* activePlayer */state[/* activePlayer */3],
-                /* playerCount */state[/* playerCount */4],
-                /* roles */state[/* roles */5]
-              ];
-    
+  if (action.tag) {
+    return /* record */[
+            /* state : VotePlayer */3,
+            /* nested : record */[
+              /* a */Caml_int32.imul(state[/* nested */1][/* a */0] + 1 | 0, action[0]),
+              /* b */Caml_int32.imul(Caml_int32.imul(state[/* nested */1][/* b */1], action[1]) + 2 | 0, -1)
+            ],
+            /* activePlayer */state[/* activePlayer */2],
+            /* playerCount */state[/* playerCount */3],
+            /* roles */state[/* roles */4],
+            /* players */state[/* players */5]
+          ];
+  } else {
+    var playerCount = action[0];
+    var roles$1 = Belt_Array.shuffle((function (param) {
+              return Belt_Array.slice(param, 0, playerCount);
+            })(roles));
+    var roleIndexes = Belt_Array.mapWithIndex(roles$1, (function (i, role) {
+            return /* tuple */[
+                    role,
+                    i
+                  ];
+          }));
+    var roleMap = Belt_Map.fromArray(roleIndexes, RoleCmp);
+    var players = Belt_Array.map(roles$1, (function (role) {
+            var tmp;
+            if (role >= 5) {
+              switch (role - 5 | 0) {
+                case 0 : 
+                    tmp = Belt_Map.getWithDefault(roleMap, /* YaoBuRan */6, -1);
+                    break;
+                case 1 : 
+                    tmp = Belt_Map.getWithDefault(roleMap, /* LaoChaoFeng */5, -1);
+                    break;
+                case 2 : 
+                    tmp = -1;
+                    break;
+                
+              }
+            } else {
+              tmp = -1;
+            }
+            return /* record */[
+                    /* role */role,
+                    /* drugged */false,
+                    /* parternerIndex */tmp,
+                    /* actionHistory : array */[]
+                  ];
+          }));
+    return /* record */[
+            /* state : Init */0,
+            /* nested : record */[
+              /* a */0,
+              /* b */0
+            ],
+            /* activePlayer */Js_math.random_int(0, playerCount),
+            /* playerCount */playerCount,
+            /* roles */roles$1,
+            /* players */players
+          ];
   }
 }
-
-var toJs = gameState;
 
 function reduce(state, jsAction) {
   if (state !== undefined) {
@@ -204,11 +274,14 @@ function reduce(state, jsAction) {
   }
 }
 
+var toJs = game$1;
+
+exports.RoleCmp = RoleCmp;
 exports.roles = roles;
 exports.InitState = InitState;
 exports.Decode = Decode;
 exports.Encode = Encode;
 exports.reduce$prime = reduce$prime;
-exports.toJs = toJs;
 exports.reduce = reduce;
-/* Json_encode Not a pure module */
+exports.toJs = toJs;
+/* RoleCmp Not a pure module */
