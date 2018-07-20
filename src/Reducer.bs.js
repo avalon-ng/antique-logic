@@ -43,22 +43,16 @@ var roles = /* array */[
   /* JiYunFu */4
 ];
 
-var game_001 = /* nested : record */[
-  /* a */0,
-  /* b */0
-];
+var game_003 = /* roles : array */[];
 
-var game_004 = /* roles : array */[];
-
-var game_005 = /* players : array */[];
+var game_004 = /* players : array */[];
 
 var game = /* record */[
   /* state : Init */0,
-  game_001,
   /* activePlayer */0,
   /* playerCount */6,
-  game_004,
-  game_005
+  game_003,
+  game_004
 ];
 
 var InitState = /* module */[/* game */game];
@@ -152,35 +146,23 @@ function game$1(state) {
               ],
               /* :: */[
                 /* tuple */[
-                  "activePlayer",
-                  state[/* activePlayer */2]
+                  "active_player",
+                  state[/* activePlayer */1]
                 ],
                 /* :: */[
                   /* tuple */[
                     "roles",
-                    Json_encode.array(role, state[/* roles */4])
+                    Json_encode.array(role, state[/* roles */3])
                   ],
                   /* :: */[
                     /* tuple */[
-                      "players",
-                      Json_encode.array(player, state[/* players */5])
+                      "player_count",
+                      state[/* playerCount */2]
                     ],
                     /* :: */[
                       /* tuple */[
-                        "payload",
-                        Json_encode.object_(/* :: */[
-                              /* tuple */[
-                                "a",
-                                state[/* nested */1][/* a */0]
-                              ],
-                              /* :: */[
-                                /* tuple */[
-                                  "b",
-                                  state[/* nested */1][/* b */1]
-                                ],
-                                /* [] */0
-                              ]
-                            ])
+                        "players",
+                        Json_encode.array(player, state[/* players */4])
                       ],
                       /* [] */0
                     ]
@@ -200,14 +182,10 @@ function reduce$prime(state, action) {
   if (action.tag) {
     return /* record */[
             /* state : VotePlayer */3,
-            /* nested : record */[
-              /* a */Caml_int32.imul(state[/* nested */1][/* a */0] + 1 | 0, action[0]),
-              /* b */Caml_int32.imul(Caml_int32.imul(state[/* nested */1][/* b */1], action[1]) + 2 | 0, -1)
-            ],
-            /* activePlayer */state[/* activePlayer */2],
-            /* playerCount */state[/* playerCount */3],
-            /* roles */state[/* roles */4],
-            /* players */state[/* players */5]
+            /* activePlayer */state[/* activePlayer */1],
+            /* playerCount */Caml_int32.imul(action[0], action[1]),
+            /* roles */state[/* roles */3],
+            /* players */state[/* players */4]
           ];
   } else {
     var playerCount = action[0];
@@ -248,10 +226,6 @@ function reduce$prime(state, action) {
           }));
     return /* record */[
             /* state : Init */0,
-            /* nested : record */[
-              /* a */0,
-              /* b */0
-            ],
             /* activePlayer */Js_math.random_int(0, playerCount),
             /* playerCount */playerCount,
             /* roles */roles$1,

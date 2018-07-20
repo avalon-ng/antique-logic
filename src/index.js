@@ -23,7 +23,3 @@ reducer({
   a: 1, b: 2,
 })
 
-reducer({
-  type: 'update_name',
-  name: 'updated name',
-})

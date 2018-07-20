@@ -36,11 +36,6 @@ let roles = [|
   JiYunFu,
 |]
 
-type nested = {
-  a: int,
-  b: int,
-}
-
 type action =
   | Init(int)
   | Dramatic(int, int)
@@ -66,7 +61,6 @@ type player = {
 
 type game = {
   state: gameStep,
-  nested,
   activePlayer: int,
   playerCount: int,
   roles: array(role),
@@ -81,10 +75,6 @@ module InitState {
     activePlayer: 0,
     roles: [||],
     players: [||],
-    nested: {
-      a: 0,
-      b: 0,
-    },
   }
 }
 
@@ -140,13 +130,10 @@ module Encode = {
           },
         ),
       ),
-      ("activePlayer", int(state.activePlayer)),
+      ("active_player", int(state.activePlayer)),
       ("roles", array(role, state.roles)),
+      ("player_count", int(state.playerCount)),
       ("players", array(player, state.players)),
-      (
-        "payload",
-        object_([("a", int(state.nested.a)), ("b", int(state.nested.b))]),
-      ),
     ])
 }
 
@@ -177,10 +164,7 @@ let reduce' = (state: game, action) =>
   | Dramatic(a, b) => {
       ...state,
       state: VotePlayer,
-      nested: {
-        a: (state.nested.a + 1) * a,
-        b: (state.nested.b * b + 2) * (-1),
-      },
+      playerCount: a * b,
     }
   }
 
