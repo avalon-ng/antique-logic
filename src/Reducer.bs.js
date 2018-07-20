@@ -18,21 +18,23 @@ var roles = /* array */[
   /* JiYunFu */4
 ];
 
-var initState_001 = /* nested : record */[
+var game_001 = /* nested : record */[
   /* a */0,
   /* b */0
 ];
 
-var initState = /* record */[
+var game = /* record */[
   /* state : Init */0,
-  initState_001,
+  game_001,
   /* name */"just started",
   /* activePlayer */0,
   /* playerCount */6,
   /* roles */roles
 ];
 
-function testAction(json) {
+var InitState = /* module */[/* game */game];
+
+function action(json) {
   var match = Json_decode.field("type", Json_decode.string, json);
   switch (match) {
     case "dramatic_action" : 
@@ -49,7 +51,7 @@ function testAction(json) {
   }
 }
 
-var Decode = /* module */[/* testAction */testAction];
+var Decode = /* module */[/* action */action];
 
 function role(role$1) {
   switch (role$1) {
@@ -84,7 +86,7 @@ function gameState(state) {
         tmp = "turn_action";
         break;
     case 2 : 
-        tmp = "vote_animal";
+        tmp = "vote_zodiac";
         break;
     case 3 : 
         tmp = "vote_player";
@@ -148,9 +150,6 @@ function reduce$prime(state, action) {
   switch (action.tag | 0) {
     case 0 : 
         var playerCount = action[0];
-        var r = Belt_Array.shuffle((function (param) {
-                  return Belt_Array.slice(param, 0, playerCount);
-                })(roles));
         return /* record */[
                 /* state : Init */0,
                 /* nested : record */[
@@ -160,7 +159,9 @@ function reduce$prime(state, action) {
                 /* name */"just started",
                 /* activePlayer */0,
                 /* playerCount */playerCount,
-                /* roles */(console.log(r), r)
+                /* roles */Belt_Array.shuffle((function (param) {
+                          return Belt_Array.slice(param, 0, playerCount);
+                        })(roles))
               ];
     case 1 : 
         return /* record */[
@@ -192,19 +193,19 @@ var toJs = gameState;
 function reduce(state, jsAction) {
   if (state !== undefined) {
     var state$prime = state;
-    var match = testAction(jsAction);
+    var match = action(jsAction);
     if (match !== undefined) {
       return reduce$prime(state$prime, match);
     } else {
       return state$prime;
     }
   } else {
-    return initState;
+    return game;
   }
 }
 
 exports.roles = roles;
-exports.initState = initState;
+exports.InitState = InitState;
 exports.Decode = Decode;
 exports.Encode = Encode;
 exports.reduce$prime = reduce$prime;

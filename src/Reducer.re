@@ -1,9 +1,10 @@
 type gameStep =
   | Init
   | TurnAction
-  | VoteAnimal
+  | VoteZodiac
   | VotePlayer
-  | End;
+  | End
+
 
 type role =
   | XuYuan
@@ -13,7 +14,7 @@ type role =
   | JiYunFu
   | LaoChaoFeng
   | YaoBuRan
-  | ZhengGuoQu;
+  | ZhengGuoQu
 
 let roles = [|
   XuYuan,
@@ -24,12 +25,12 @@ let roles = [|
   YaoBuRan,
   ZhengGuoQu,
   JiYunFu,
-|];
+|]
 
 type nested = {
   a: int,
   b: int,
-};
+}
 
 type gameState = {
   state: gameStep,
@@ -38,40 +39,58 @@ type gameState = {
   activePlayer: int,
   playerCount: int,
   roles: array(role),
-};
+}
 
-type testAction =
+type action =
   | Init(int)
   | UpdateName(string)
-  | Dramatic(int, int);
+  | Dramatic(int, int)
 
-let initState = {
-  state: Init,
-  playerCount: 6,
-  activePlayer: 0,
-  roles,
-  nested: {
-    a: 0,
-    b: 0,
-  },
-  name: "just started",
-};
+type gameAction =
+  /* maybe instead of int, use a zodiac variant here */
+  | IndentifyZodiac(int)
+  /* maybe instead of int, use a zodiac variant here */
+  | VoteZodiac(int)
+  | VotePlayer(int)
 
+type playerState = {
+  role:role,
+  drugged: bool,
+  parternerIndex: int,
+  actionHistory: array(action),
+}
+
+
+module InitState {
+  let game = {
+    state: Init,
+    playerCount: 6,
+    activePlayer: 0,
+    roles,
+    nested: {
+      a: 0,
+      b: 0,
+    },
+    name: "just started",
+  }
+}
+
+/* mostly, solely, for actions */
 module Decode = {
-  open Json.Decode;
+  open Json.Decode
 
-  let testAction = json =>
+  let action = json =>
     switch (json |> field("type", string)) {
     | "init" => Some(Init(json |> field("playerCount", int)))
     | "update_name" => Some(UpdateName(json |> field("name", string)))
     | "dramatic_action" =>
       Some(Dramatic(json |> field("a", int), json |> field("b", int)))
     | _ => None
-    };
-};
+    }
+}
 
 module Encode = {
-  open Json.Encode;
+  open Json.Encode
 
   let role = role =>
     string(
@@ -85,7 +104,7 @@ module Encode = {
       | YaoBuRan => "yao_bu_ran"
       | ZhengGuoQu => "zheng_guo_qu"
       },
-    );
+    )
 
   let gameState = (state: gameState) =>
     object_([
@@ -95,7 +114,7 @@ module Encode = {
           switch (state.state) {
           | Init => "init"
           | TurnAction => "turn_action"
-          | VoteAnimal => "vote_animal"
+          | VoteZodiac => "vote_zodiac"
           | VotePlayer => "vote_player"
           | End => "end"
           },
@@ -108,19 +127,16 @@ module Encode = {
         "payload",
         object_([("a", int(state.nested.a)), ("b", int(state.nested.b))]),
       ),
-    ]);
-};
+    ])
+}
 
-let reduce' = (state: gameState, action: testAction) =>
+let reduce' = (state: gameState, action) =>
   switch (action) {
   | Init(playerCount) => {
-      ...initState,
+      ...InitState.game,
       playerCount,
-      roles: {
-        let r = Belt.Array.(roles |> slice(~offset=0, ~len=playerCount) |> shuffle);
-        Js.log(r);
-        r
-      }
+      roles: Belt.Array.(roles |> slice(~offset=0, ~len=playerCount) |> shuffle)
+
     }
   | UpdateName(name) => {...state, state: TurnAction, name}
   | Dramatic(a, b) => {
@@ -131,16 +147,17 @@ let reduce' = (state: gameState, action: testAction) =>
         b: (state.nested.b * b + 2) * (-1),
       },
     }
-  };
+  }
 
-let toJs = action => action |> Encode.gameState;
+let toJs = action => action |> Encode.gameState
+
 
 let reduce = (state: option(gameState), jsAction) =>
   switch (state) {
   | Some(state') =>
-    switch (Decode.testAction(jsAction)) {
+    switch (Decode.action(jsAction)) {
     | Some(action) => reduce'(state', action)
     | None => state'
     }
-  | None => initState
-  };
+  | None => InitState.game
+  }
