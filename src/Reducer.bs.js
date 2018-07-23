@@ -5,6 +5,7 @@ var Block = require("bs-platform/lib/js/block.js");
 var Belt_Id = require("bs-platform/lib/js/belt_Id.js");
 var Js_math = require("bs-platform/lib/js/js_math.js");
 var Belt_Map = require("bs-platform/lib/js/belt_Map.js");
+var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_int32 = require("bs-platform/lib/js/caml_int32.js");
 var Json_decode = require("@glennsl/bs-json/src/Json_decode.bs.js");
@@ -43,16 +44,46 @@ var roles = /* array */[
   /* JiYunFu */4
 ];
 
-var game_003 = /* roles : array */[];
+var allTreasureTypes = /* array */[
+  /* Rat */0,
+  /* Bull */1,
+  /* Tiger */2,
+  /* Rabbit */3,
+  /* Dragon */4,
+  /* Snake */5,
+  /* Horse */6,
+  /* Goat */7,
+  /* Monkey */8,
+  /* Chicken */9,
+  /* Dog */10,
+  /* Pig */11
+];
 
-var game_004 = /* players : array */[];
+function treasureNum(treasure) {
+  return treasure;
+}
+
+function cmp$1(r1, r2) {
+  return r1 - r2 | 0;
+}
+
+var TreasureCmp = Belt_Id.MakeComparable(/* module */[/* cmp */cmp$1]);
+
+var game_004 = /* roles : array */[];
+
+var game_005 = /* players : array */[];
+
+var game_006 = /* remainingTreasures : array */[];
 
 var game = /* record */[
   /* phase : Preparation */0,
+  /* round */0,
   /* activePlayer */0,
   /* playerCount */6,
-  game_003,
-  game_004
+  game_004,
+  game_005,
+  game_006,
+  /* treasures : [] */0
 ];
 
 var InitState = /* module */[/* game */game];
@@ -75,6 +106,8 @@ function action(json) {
                 ]);
     case "init" : 
         return /* Init */Block.__(0, [Json_decode.field("playerCount", Json_decode.$$int, json)]);
+    case "start_turn" : 
+        return /* StartTurn */0;
     default:
       return undefined;
   }
@@ -108,6 +141,36 @@ function role(role$1) {
   }
 }
 
+function treasureType(t) {
+  switch (t) {
+    case 0 : 
+        return "rat";
+    case 1 : 
+        return "bull";
+    case 2 : 
+        return "tiger";
+    case 3 : 
+        return "rabbit";
+    case 4 : 
+        return "dragon";
+    case 5 : 
+        return "snake";
+    case 6 : 
+        return "horse";
+    case 7 : 
+        return "goat";
+    case 8 : 
+        return "monkey";
+    case 9 : 
+        return "chicken";
+    case 10 : 
+        return "dog";
+    case 11 : 
+        return "pig";
+    
+  }
+}
+
 function player(player$1) {
   return Json_encode.object_(/* :: */[
               /* tuple */[
@@ -116,16 +179,10 @@ function player(player$1) {
               ],
               /* :: */[
                 /* tuple */[
-                  "drugged",
-                  player$1[/* drugged */1]
+                  "parternerIndex",
+                  player$1[/* parternerIndex */4]
                 ],
-                /* :: */[
-                  /* tuple */[
-                    "parternerIndex",
-                    player$1[/* parternerIndex */3]
-                  ],
-                  /* [] */0
-                ]
+                /* [] */0
               ]
             ]);
 }
@@ -167,25 +224,31 @@ function game$1(state) {
               ],
               /* :: */[
                 /* tuple */[
-                  "active_player",
-                  state[/* activePlayer */1]
+                  "round",
+                  state[/* round */1]
                 ],
                 /* :: */[
                   /* tuple */[
-                    "roles",
-                    Json_encode.array(role, state[/* roles */3])
+                    "active_player",
+                    state[/* activePlayer */2]
                   ],
                   /* :: */[
                     /* tuple */[
-                      "player_count",
-                      state[/* playerCount */2]
+                      "roles",
+                      Json_encode.array(role, state[/* roles */4])
                     ],
                     /* :: */[
                       /* tuple */[
-                        "players",
-                        Json_encode.array(player, state[/* players */4])
+                        "player_count",
+                        state[/* playerCount */3]
                       ],
-                      /* [] */0
+                      /* :: */[
+                        /* tuple */[
+                          "players",
+                          Json_encode.array(player, state[/* players */5])
+                        ],
+                        /* [] */0
+                      ]
                     ]
                   ]
                 ]
@@ -195,80 +258,210 @@ function game$1(state) {
 
 var Encode = /* module */[
   /* role */role,
+  /* treasureType */treasureType,
   /* player */player,
   /* game */game$1
 ];
 
 function reduce$prime(state, action) {
-  switch (action.tag | 0) {
-    case 0 : 
-        var playerCount = action[0];
-        var roles$1 = Belt_Array.shuffle((function (param) {
-                  return Belt_Array.slice(param, 0, playerCount);
-                })(roles));
-        var roleIndexes = Belt_Array.mapWithIndex(roles$1, (function (i, role) {
-                return /* tuple */[
-                        role,
-                        i
-                      ];
+  if (typeof action === "number") {
+    var match = state[/* phase */0] !== /* TurnUpkeep */1;
+    if (match) {
+      return state;
+    } else {
+      var match$1 = Belt_Array.slice(state[/* remainingTreasures */6], 0, 4);
+      var tmp;
+      if (match$1.length !== 4) {
+        tmp = state[/* treasures */7];
+      } else {
+        var t1 = match$1[0];
+        var t2 = match$1[1];
+        var t3 = match$1[2];
+        var t4 = match$1[3];
+        var treasures_000 = /* record */[
+          /* type_ */t1,
+          /* votes : [] */0,
+          /* voteDone */false,
+          /* authentic */true
+        ];
+        var treasures_001 = /* :: */[
+          /* record */[
+            /* type_ */t2,
+            /* votes : [] */0,
+            /* voteDone */false,
+            /* authentic */true
+          ],
+          /* :: */[
+            /* record */[
+              /* type_ */t3,
+              /* votes : [] */0,
+              /* voteDone */false,
+              /* authentic */false
+            ],
+            /* :: */[
+              /* record */[
+                /* type_ */t4,
+                /* votes : [] */0,
+                /* voteDone */false,
+                /* authentic */false
+              ],
+              /* [] */0
+            ]
+          ]
+        ];
+        var treasures = /* :: */[
+          treasures_000,
+          treasures_001
+        ];
+        var treasures$1 = Belt_List.sort(treasures, (function (a, b) {
+                return a[/* type_ */0] - b[/* type_ */0] | 0;
               }));
-        var roleMap = Belt_Map.fromArray(roleIndexes, RoleCmp);
-        var players = Belt_Array.map(roles$1, (function (role) {
-                var tmp;
-                if (role >= 5) {
-                  switch (role - 5 | 0) {
-                    case 0 : 
-                        tmp = Belt_Map.getWithDefault(roleMap, /* YaoBuRan */6, -1);
-                        break;
-                    case 1 : 
-                        tmp = Belt_Map.getWithDefault(roleMap, /* LaoChaoFeng */5, -1);
-                        break;
-                    case 2 : 
-                        tmp = -1;
-                        break;
-                    
+        var tmp$1;
+        var exit = 0;
+        if (treasures$1) {
+          var match$2 = treasures$1[1];
+          if (match$2) {
+            var match$3 = match$2[1];
+            if (match$3) {
+              var match$4 = match$3[1];
+              if (match$4 && !match$4[1]) {
+                tmp$1 = /* tuple */[
+                  treasures$1[0],
+                  match$2[0],
+                  match$3[0],
+                  match$4[0]
+                ];
+              } else {
+                exit = 1;
+              }
+            } else {
+              exit = 1;
+            }
+          } else {
+            exit = 1;
+          }
+        } else {
+          exit = 1;
+        }
+        if (exit === 1) {
+          var t = /* record */[
+            /* type_ : Rat */0,
+            /* votes : [] */0,
+            /* voteDone */true,
+            /* authentic */false
+          ];
+          tmp$1 = /* tuple */[
+            t,
+            t,
+            t,
+            t
+          ];
+        }
+        tmp = Belt_List.add(state[/* treasures */7], tmp$1);
+      }
+      return /* record */[
+              /* phase : Turn */2,
+              /* round */state[/* round */1] + 1 | 0,
+              /* activePlayer */state[/* activePlayer */2],
+              /* playerCount */state[/* playerCount */3],
+              /* roles */state[/* roles */4],
+              /* players */Belt_Array.map(state[/* players */5], (function (p) {
+                      return /* record */[
+                              /* role */p[/* role */0],
+                              /* voteTokens */p[/* voteTokens */1] + 2 | 0,
+                              /* drugged */p[/* drugged */2],
+                              /* blind */p[/* blind */3],
+                              /* parternerIndex */p[/* parternerIndex */4],
+                              /* actionHistory */p[/* actionHistory */5]
+                            ];
+                    })),
+              /* remainingTreasures */Belt_Array.slice(state[/* remainingTreasures */6], 4, 12),
+              /* treasures */tmp
+            ];
+    }
+  } else {
+    switch (action.tag | 0) {
+      case 0 : 
+          var playerCount = action[0];
+          var roles$1 = Belt_Array.shuffle((function (param) {
+                    return Belt_Array.slice(param, 0, playerCount);
+                  })(roles));
+          var remainingTreasures = Belt_Array.shuffle(allTreasureTypes);
+          var roleIndexes = Belt_Array.mapWithIndex(roles$1, (function (i, role) {
+                  return /* tuple */[
+                          role,
+                          i
+                        ];
+                }));
+          var roleMap = Belt_Map.fromArray(roleIndexes, RoleCmp);
+          var players = Belt_Array.map(roles$1, (function (role) {
+                  var tmp;
+                  if (role >= 5) {
+                    switch (role - 5 | 0) {
+                      case 0 : 
+                          tmp = Belt_Map.getWithDefault(roleMap, /* YaoBuRan */6, -1);
+                          break;
+                      case 1 : 
+                          tmp = Belt_Map.getWithDefault(roleMap, /* LaoChaoFeng */5, -1);
+                          break;
+                      case 2 : 
+                          tmp = -1;
+                          break;
+                      
+                    }
+                  } else {
+                    tmp = -1;
                   }
-                } else {
-                  tmp = -1;
-                }
-                return /* record */[
-                        /* role */role,
-                        /* drugged */false,
-                        /* blind */role === 3 || role === 2 ? Js_math.random_int(0, 3) : -1,
-                        /* parternerIndex */tmp,
-                        /* actionHistory : array */[]
-                      ];
-              }));
-        return /* record */[
-                /* phase : Preparation */0,
-                /* activePlayer */Js_math.random_int(0, playerCount),
-                /* playerCount */playerCount,
-                /* roles */roles$1,
-                /* players */players
-              ];
-    case 1 : 
-        return /* record */[
-                /* phase : VoteRole */6,
-                /* activePlayer */state[/* activePlayer */1],
-                /* playerCount */Caml_int32.imul(action[0], action[1]),
-                /* roles */state[/* roles */3],
-                /* players */state[/* players */4]
-              ];
-    case 2 : 
-        return state;
-    
+                  return /* record */[
+                          /* role */role,
+                          /* voteTokens */0,
+                          /* drugged */false,
+                          /* blind */role === 3 || role === 2 ? Js_math.random_int(0, 3) : -1,
+                          /* parternerIndex */tmp,
+                          /* actionHistory : array */[]
+                        ];
+                }));
+          return /* record */[
+                  /* phase : Preparation */0,
+                  /* round */0,
+                  /* activePlayer */Js_math.random_int(0, playerCount),
+                  /* playerCount */playerCount,
+                  /* roles */roles$1,
+                  /* players */players,
+                  /* remainingTreasures */remainingTreasures,
+                  /* treasures : [] */0
+                ];
+      case 1 : 
+          return /* record */[
+                  /* phase : VoteRole */6,
+                  /* round */state[/* round */1],
+                  /* activePlayer */state[/* activePlayer */2],
+                  /* playerCount */Caml_int32.imul(action[0], action[1]),
+                  /* roles */state[/* roles */4],
+                  /* players */state[/* players */5],
+                  /* remainingTreasures */state[/* remainingTreasures */6],
+                  /* treasures */state[/* treasures */7]
+                ];
+      case 2 : 
+          return state;
+      
+    }
   }
 }
 
 function authorized(index, state, action) {
-  switch (action.tag | 0) {
-    case 0 : 
-        return index === 0;
-    case 1 : 
-        return true;
-    case 2 : 
-        return state[/* activePlayer */1] === index;
-    
+  if (typeof action === "number") {
+    return index === 0;
+  } else {
+    switch (action.tag | 0) {
+      case 0 : 
+          return index === 0;
+      case 1 : 
+          return true;
+      case 2 : 
+          return state[/* activePlayer */2] === index;
+      
+    }
   }
 }
 
@@ -297,6 +490,9 @@ var toJs = game$1;
 
 exports.RoleCmp = RoleCmp;
 exports.roles = roles;
+exports.allTreasureTypes = allTreasureTypes;
+exports.treasureNum = treasureNum;
+exports.TreasureCmp = TreasureCmp;
 exports.InitState = InitState;
 exports.Decode = Decode;
 exports.Encode = Encode;
