@@ -291,54 +291,50 @@ let reduce' = (state: game, action) =>
    * pick 4 more treasures, and assign their states
    * assign starting player
    */
-  | StartTurn =>
-    state.phase != TurnUpkeep ?
-      state :
-      {
-        ...state,
-        phase: Turn,
-        round: state.round + 1,
-        players:
-          /* add 2 more vote tokens */
-          Belt.Array.map(state.players, p =>
-            {...p, voteTokens: p.voteTokens + 2}
-          ),
-        remainingTreasures:
-          Belt.Array.slice(state.remainingTreasures, ~offset=4, ~len=12),
-        treasures:
-          switch (
-            Belt.Array.slice(state.remainingTreasures, ~offset=0, ~len=4)
-          ) {
-          | [|t1, t2, t3, t4|] =>
-            Belt.List.add(
-              state.treasures,
-              {
-                let treasures = [
-                  {type_: t1, votes: [], voteDone: false, authentic: true},
-                  {type_: t2, votes: [], voteDone: false, authentic: true},
-                  {type_: t3, votes: [], voteDone: false, authentic: false},
-                  {type_: t4, votes: [], voteDone: false, authentic: false},
-                ];
-                let treasures =
-                  Belt.List.sort(treasures, (a, b) =>
-                    treasureNum(a.type_) - treasureNum(b.type_)
-                  );
-                switch (treasures) {
-                | [t1, t2, t3, t4] => (t1, t2, t3, t4)
-                | _ =>
-                  let t = {
-                    type_: Rat,
-                    votes: [],
-                    voteDone: true,
-                    authentic: false,
-                  };
-                  (t, t, t, t);
+  | StartTurn => {
+      ...state,
+      phase: Turn,
+      round: state.round + 1,
+      players:
+        /* add 2 more vote tokens */
+        Belt.Array.map(state.players, p =>
+          {...p, voteTokens: p.voteTokens + 2}
+        ),
+      remainingTreasures:
+        Belt.Array.slice(state.remainingTreasures, ~offset=4, ~len=12),
+      treasures:
+        /* XXX this part we won't ever reach [] case, but still forced to handle it */
+        switch (Belt.Array.slice(state.remainingTreasures, ~offset=0, ~len=4)) {
+        | [|t1, t2, t3, t4|] =>
+          Belt.List.add(
+            state.treasures,
+            {
+              let treasures = [
+                {type_: t1, votes: [], voteDone: false, authentic: true},
+                {type_: t2, votes: [], voteDone: false, authentic: true},
+                {type_: t3, votes: [], voteDone: false, authentic: false},
+                {type_: t4, votes: [], voteDone: false, authentic: false},
+              ];
+              let treasures =
+                Belt.List.sort(treasures, (a, b) =>
+                  treasureNum(a.type_) - treasureNum(b.type_)
+                );
+              switch (treasures) {
+              | [t1, t2, t3, t4] => (t1, t2, t3, t4)
+              | _ =>
+                let t = {
+                  type_: Rat,
+                  votes: [],
+                  voteDone: true,
+                  authentic: false,
                 };
-              },
-            )
-          | _ => state.treasures
-          },
-      }
+                (t, t, t, t);
+              };
+            },
+          )
+        | _ => state.treasures
+        },
+    }
   | Dramatic(a, b) => {...state, phase: VoteRole, playerCount: a * b}
   | IdentifyTreasure(_) => state
   };
@@ -352,16 +348,23 @@ let authorized = (index, state, action) =>
   | _ => true
   };
 
+let validate = (state, action) =>
+  switch (action) {
+  | StartTurn => state.phase == TurnUpkeep
+  | PrepareTurn => false
+  | _ => true
+  };
+
 let reduce = (state: option(game), jsAction) => {
   let playerIndex = Decode.actionMeta(jsAction).playerIndex;
 
   switch (state) {
-  | Some(state') =>
+  | Some(state) =>
     switch (Decode.action(jsAction)) {
     | Some(action) =>
-      authorized(playerIndex, state', action) ?
-        reduce'(state', action) : state'
-    | None => state'
+      authorized(playerIndex, state, action) && validate(state, action) ?
+        reduce'(state, action) : state
+    | None => state
     }
   | None => InitState.game
   };
