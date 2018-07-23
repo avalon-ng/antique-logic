@@ -106,8 +106,10 @@ function action(json) {
                 ]);
     case "init" : 
         return /* Init */Block.__(0, [Json_decode.field("playerCount", Json_decode.$$int, json)]);
+    case "prepare_turn" : 
+        return /* PrepareTurn */0;
     case "start_turn" : 
-        return /* StartTurn */0;
+        return /* StartTurn */1;
     default:
       return undefined;
   }
@@ -265,72 +267,87 @@ var Encode = /* module */[
 
 function reduce$prime(state, action) {
   if (typeof action === "number") {
-    var match = state[/* phase */0] !== /* TurnUpkeep */1;
-    if (match) {
-      return state;
+    if (action === 0) {
+      return /* record */[
+              /* phase : TurnUpkeep */1,
+              /* round */state[/* round */1],
+              /* activePlayer */state[/* activePlayer */2],
+              /* playerCount */state[/* playerCount */3],
+              /* roles */state[/* roles */4],
+              /* players */state[/* players */5],
+              /* remainingTreasures */state[/* remainingTreasures */6],
+              /* treasures */state[/* treasures */7]
+            ];
     } else {
-      var match$1 = Belt_Array.slice(state[/* remainingTreasures */6], 0, 4);
-      var tmp;
-      if (match$1.length !== 4) {
-        tmp = state[/* treasures */7];
+      var match = state[/* phase */0] !== /* TurnUpkeep */1;
+      if (match) {
+        return state;
       } else {
-        var t1 = match$1[0];
-        var t2 = match$1[1];
-        var t3 = match$1[2];
-        var t4 = match$1[3];
-        var treasures_000 = /* record */[
-          /* type_ */t1,
-          /* votes : [] */0,
-          /* voteDone */false,
-          /* authentic */true
-        ];
-        var treasures_001 = /* :: */[
-          /* record */[
-            /* type_ */t2,
+        var match$1 = Belt_Array.slice(state[/* remainingTreasures */6], 0, 4);
+        var tmp;
+        if (match$1.length !== 4) {
+          tmp = state[/* treasures */7];
+        } else {
+          var t1 = match$1[0];
+          var t2 = match$1[1];
+          var t3 = match$1[2];
+          var t4 = match$1[3];
+          var treasures_000 = /* record */[
+            /* type_ */t1,
             /* votes : [] */0,
             /* voteDone */false,
             /* authentic */true
-          ],
-          /* :: */[
+          ];
+          var treasures_001 = /* :: */[
             /* record */[
-              /* type_ */t3,
+              /* type_ */t2,
               /* votes : [] */0,
               /* voteDone */false,
-              /* authentic */false
+              /* authentic */true
             ],
             /* :: */[
               /* record */[
-                /* type_ */t4,
+                /* type_ */t3,
                 /* votes : [] */0,
                 /* voteDone */false,
                 /* authentic */false
               ],
-              /* [] */0
+              /* :: */[
+                /* record */[
+                  /* type_ */t4,
+                  /* votes : [] */0,
+                  /* voteDone */false,
+                  /* authentic */false
+                ],
+                /* [] */0
+              ]
             ]
-          ]
-        ];
-        var treasures = /* :: */[
-          treasures_000,
-          treasures_001
-        ];
-        var treasures$1 = Belt_List.sort(treasures, (function (a, b) {
-                return a[/* type_ */0] - b[/* type_ */0] | 0;
-              }));
-        var tmp$1;
-        var exit = 0;
-        if (treasures$1) {
-          var match$2 = treasures$1[1];
-          if (match$2) {
-            var match$3 = match$2[1];
-            if (match$3) {
-              var match$4 = match$3[1];
-              if (match$4 && !match$4[1]) {
-                tmp$1 = /* tuple */[
-                  treasures$1[0],
-                  match$2[0],
-                  match$3[0],
-                  match$4[0]
-                ];
+          ];
+          var treasures = /* :: */[
+            treasures_000,
+            treasures_001
+          ];
+          var treasures$1 = Belt_List.sort(treasures, (function (a, b) {
+                  return a[/* type_ */0] - b[/* type_ */0] | 0;
+                }));
+          var tmp$1;
+          var exit = 0;
+          if (treasures$1) {
+            var match$2 = treasures$1[1];
+            if (match$2) {
+              var match$3 = match$2[1];
+              if (match$3) {
+                var match$4 = match$3[1];
+                if (match$4 && !match$4[1]) {
+                  tmp$1 = /* tuple */[
+                    treasures$1[0],
+                    match$2[0],
+                    match$3[0],
+                    match$4[0]
+                  ];
+                } else {
+                  exit = 1;
+                }
               } else {
                 exit = 1;
               }
@@ -340,44 +357,42 @@ function reduce$prime(state, action) {
           } else {
             exit = 1;
           }
-        } else {
-          exit = 1;
-        }
-        if (exit === 1) {
-          var t = /* record */[
-            /* type_ : Rat */0,
-            /* votes : [] */0,
-            /* voteDone */true,
-            /* authentic */false
-          ];
-          tmp$1 = /* tuple */[
-            t,
-            t,
-            t,
-            t
-          ];
-        }
-        tmp = Belt_List.add(state[/* treasures */7], tmp$1);
-      }
-      return /* record */[
-              /* phase : Turn */2,
-              /* round */state[/* round */1] + 1 | 0,
-              /* activePlayer */state[/* activePlayer */2],
-              /* playerCount */state[/* playerCount */3],
-              /* roles */state[/* roles */4],
-              /* players */Belt_Array.map(state[/* players */5], (function (p) {
-                      return /* record */[
-                              /* role */p[/* role */0],
-                              /* voteTokens */p[/* voteTokens */1] + 2 | 0,
-                              /* drugged */p[/* drugged */2],
-                              /* blind */p[/* blind */3],
-                              /* parternerIndex */p[/* parternerIndex */4],
-                              /* actionHistory */p[/* actionHistory */5]
-                            ];
-                    })),
-              /* remainingTreasures */Belt_Array.slice(state[/* remainingTreasures */6], 4, 12),
-              /* treasures */tmp
+          if (exit === 1) {
+            var t = /* record */[
+              /* type_ : Rat */0,
+              /* votes : [] */0,
+              /* voteDone */true,
+              /* authentic */false
             ];
+            tmp$1 = /* tuple */[
+              t,
+              t,
+              t,
+              t
+            ];
+          }
+          tmp = Belt_List.add(state[/* treasures */7], tmp$1);
+        }
+        return /* record */[
+                /* phase : Turn */2,
+                /* round */state[/* round */1] + 1 | 0,
+                /* activePlayer */state[/* activePlayer */2],
+                /* playerCount */state[/* playerCount */3],
+                /* roles */state[/* roles */4],
+                /* players */Belt_Array.map(state[/* players */5], (function (p) {
+                        return /* record */[
+                                /* role */p[/* role */0],
+                                /* voteTokens */p[/* voteTokens */1] + 2 | 0,
+                                /* drugged */p[/* drugged */2],
+                                /* blind */p[/* blind */3],
+                                /* parternerIndex */p[/* parternerIndex */4],
+                                /* actionHistory */p[/* actionHistory */5]
+                              ];
+                      })),
+                /* remainingTreasures */Belt_Array.slice(state[/* remainingTreasures */6], 4, 12),
+                /* treasures */tmp
+              ];
+      }
     }
   } else {
     switch (action.tag | 0) {
@@ -454,13 +469,12 @@ function authorized(index, state, action) {
     return index === 0;
   } else {
     switch (action.tag | 0) {
-      case 0 : 
-          return index === 0;
       case 1 : 
           return true;
       case 2 : 
           return state[/* activePlayer */2] === index;
-      
+      default:
+        return index === 0;
     }
   }
 }

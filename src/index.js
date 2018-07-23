@@ -18,8 +18,6 @@ reducer(0, {
   playerCount: 6,
 })
 
-reducer(3, {
-  type: 'dramatic_action',
-  a: 1, b: 2,
-})
+reducer(0, { type: 'prepare_turn' })
+reducer(0, { type: 'start_turn' })
 

@@ -96,6 +96,7 @@ module TreasureCmp =
 
 type action =
   | Init(int)
+  | PrepareTurn /* enter TurnUpkeep phase */
   | StartTurn
   | Dramatic(int, int)
   | IdentifyTreasure(int);
@@ -170,6 +171,7 @@ module Decode = {
   let action = json =>
     switch (json |> field("type", string)) {
     | "init" => Some(Init(json |> field("playerCount", int)))
+    | "prepare_turn" => Some(PrepareTurn)
     | "start_turn" => Some(StartTurn)
     | "dramatic_action" =>
       Some(Dramatic(json |> field("a", int), json |> field("b", int)))
@@ -283,7 +285,7 @@ let reduce' = (state: game, action) =>
       roles,
       players,
     };
-
+  | PrepareTurn => {...state, phase: TurnUpkeep}
   /* StartTurn does following things
    * give each player 2 vote token
    * pick 4 more treasures, and assign their states
@@ -344,6 +346,7 @@ let reduce' = (state: game, action) =>
 let authorized = (index, state, action) =>
   switch (action) {
   | Init(_) => index == 0
+  | PrepareTurn => index == 0
   | StartTurn => index == 0
   | IdentifyTreasure(_) => state.activePlayer == index
   | _ => true
