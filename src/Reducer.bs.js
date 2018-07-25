@@ -7,7 +7,6 @@ var Js_math = require("bs-platform/lib/js/js_math.js");
 var Belt_Map = require("bs-platform/lib/js/belt_Map.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_int32 = require("bs-platform/lib/js/caml_int32.js");
 var Json_decode = require("@glennsl/bs-json/src/Json_decode.bs.js");
 var Json_encode = require("@glennsl/bs-json/src/Json_encode.bs.js");
 
@@ -73,7 +72,7 @@ var game_004 = /* roles : array */[];
 
 var game_005 = /* players : array */[];
 
-var game_006 = /* remainingTreasures : array */[];
+var game_008 = /* remainingTreasures : array */[];
 
 var game = /* record */[
   /* phase : Preparation */0,
@@ -82,11 +81,99 @@ var game = /* record */[
   /* playerCount */6,
   game_004,
   game_005,
-  game_006,
+  /* resultReversed */false,
+  /* resultUnknown */-1,
+  game_008,
   /* treasures : [] */0
 ];
 
 var InitState = /* module */[/* game */game];
+
+function identifyTreasure(param, treasures, player, treasureIndex) {
+  var resultReversed = param[/* resultReversed */6];
+  var match = Belt_List.get(treasures, treasureIndex);
+  if (match !== undefined) {
+    var treasure = match;
+    var match$1 = player[/* role */0];
+    if (match$1 !== 4) {
+      if (match$1 >= 5) {
+        var match$2 = treasure[/* authentic */3];
+        if (match$2) {
+          return /* Authentic */0;
+        } else {
+          return /* Fake */1;
+        }
+      } else {
+        var match$3 = param[/* resultUnknown */7] === treasureIndex;
+        if (match$3) {
+          return /* Unknown */2;
+        } else {
+          var match$4 = player[/* role */0];
+          var exit = 0;
+          switch (match$4) {
+            case 0 : 
+                if (resultReversed) {
+                  var match$5 = treasure[/* authentic */3];
+                  if (match$5) {
+                    return /* Fake */1;
+                  } else {
+                    return /* Authentic */0;
+                  }
+                } else {
+                  var match$6 = treasure[/* authentic */3];
+                  if (match$6) {
+                    return /* Authentic */0;
+                  } else {
+                    return /* Fake */1;
+                  }
+                }
+            case 2 : 
+            case 3 : 
+                exit = 1;
+                break;
+            case 1 : 
+            case 4 : 
+            case 5 : 
+            case 6 : 
+            case 7 : 
+                return /* Unknown */2;
+            
+          }
+          if (exit === 1) {
+            var match$7 = player[/* blind */3] === param[/* round */1];
+            if (match$7) {
+              return /* Unknown */2;
+            } else if (resultReversed) {
+              var match$8 = treasure[/* authentic */3];
+              if (match$8) {
+                return /* Fake */1;
+              } else {
+                return /* Authentic */0;
+              }
+            } else {
+              var match$9 = treasure[/* authentic */3];
+              if (match$9) {
+                return /* Authentic */0;
+              } else {
+                return /* Fake */1;
+              }
+            }
+          }
+          
+        }
+      }
+    } else {
+      var match$10 = treasure[/* authentic */3];
+      if (match$10) {
+        return /* Authentic */0;
+      } else {
+        return /* Fake */1;
+      }
+    }
+  } else {
+    return /* Unknown */2;
+  }
+}
 
 function meta(json) {
   return /* record */[/* playerIndex */Json_decode.field("playerIndex", Json_decode.$$int, json)];
@@ -99,17 +186,19 @@ function actionMeta(json) {
 function action(json) {
   var match = Json_decode.field("type", Json_decode.string, json);
   switch (match) {
-    case "dramatic_action" : 
-        return /* Dramatic */Block.__(1, [
-                  Json_decode.field("a", Json_decode.$$int, json),
-                  Json_decode.field("b", Json_decode.$$int, json)
-                ]);
     case "init" : 
         return /* Init */Block.__(0, [Json_decode.field("playerCount", Json_decode.$$int, json)]);
     case "prepare_turn" : 
         return /* PrepareTurn */0;
     case "start_turn" : 
         return /* StartTurn */1;
+    case "turn_action" : 
+        var match$1 = Json_decode.field("action", Json_decode.string, json);
+        var tmp = match$1 === "identify_treasure" ? /* IdentifyTreasure */[
+            Json_decode.field("index", Json_decode.$$int, json),
+            /* Unknown */2
+          ] : /* Nop */0;
+        return /* TurnAction */Block.__(1, [tmp]);
     default:
       return undefined;
   }
@@ -173,6 +262,38 @@ function treasureType(t) {
   }
 }
 
+function treasureState(s) {
+  switch (s) {
+    case 0 : 
+        return "real";
+    case 1 : 
+        return "fake";
+    case 2 : 
+        return "unknown";
+    
+  }
+}
+
+function actionHistory(turnAction) {
+  if (turnAction) {
+    return Json_encode.object_(/* :: */[
+                /* tuple */[
+                  "index",
+                  turnAction[0]
+                ],
+                /* :: */[
+                  /* tuple */[
+                    "state",
+                    treasureState(turnAction[1])
+                  ],
+                  /* [] */0
+                ]
+              ]);
+  } else {
+    return "nop";
+  }
+}
+
 function player(player$1) {
   return Json_encode.object_(/* :: */[
               /* tuple */[
@@ -184,7 +305,13 @@ function player(player$1) {
                   "parternerIndex",
                   player$1[/* parternerIndex */4]
                 ],
-                /* [] */0
+                /* :: */[
+                  /* tuple */[
+                    "actionHistory",
+                    Json_encode.array(actionHistory, player$1[/* actionHistory */5])
+                  ],
+                  /* [] */0
+                ]
               ]
             ]);
 }
@@ -261,11 +388,13 @@ function game$1(state) {
 var Encode = /* module */[
   /* role */role,
   /* treasureType */treasureType,
+  /* treasureState */treasureState,
+  /* actionHistory */actionHistory,
   /* player */player,
   /* game */game$1
 ];
 
-function reduce$prime(state, action) {
+function reduce$prime(playerIndex, state, action) {
   if (typeof action === "number") {
     if (action === 0) {
       return /* record */[
@@ -275,14 +404,16 @@ function reduce$prime(state, action) {
               /* playerCount */state[/* playerCount */3],
               /* roles */state[/* roles */4],
               /* players */state[/* players */5],
-              /* remainingTreasures */state[/* remainingTreasures */6],
-              /* treasures */state[/* treasures */7]
+              /* resultReversed */state[/* resultReversed */6],
+              /* resultUnknown */state[/* resultUnknown */7],
+              /* remainingTreasures */state[/* remainingTreasures */8],
+              /* treasures */state[/* treasures */9]
             ];
     } else {
-      var match = Belt_Array.slice(state[/* remainingTreasures */6], 0, 4);
+      var match = Belt_Array.slice(state[/* remainingTreasures */8], 0, 4);
       var tmp;
       if (match.length !== 4) {
-        tmp = state[/* treasures */7];
+        tmp = state[/* treasures */9];
       } else {
         var t1 = match[0];
         var t2 = match[1];
@@ -323,54 +454,12 @@ function reduce$prime(state, action) {
           treasures_000,
           treasures_001
         ];
-        var treasures$1 = Belt_List.sort(treasures, (function (a, b) {
-                return a[/* type_ */0] - b[/* type_ */0] | 0;
-              }));
-        var tmp$1;
-        var exit = 0;
-        if (treasures$1) {
-          var match$1 = treasures$1[1];
-          if (match$1) {
-            var match$2 = match$1[1];
-            if (match$2) {
-              var match$3 = match$2[1];
-              if (match$3 && !match$3[1]) {
-                tmp$1 = /* tuple */[
-                  treasures$1[0],
-                  match$1[0],
-                  match$2[0],
-                  match$3[0]
-                ];
-              } else {
-                exit = 1;
-              }
-            } else {
-              exit = 1;
-            }
-          } else {
-            exit = 1;
-          }
-        } else {
-          exit = 1;
-        }
-        if (exit === 1) {
-          var t = /* record */[
-            /* type_ : Rat */0,
-            /* votes : [] */0,
-            /* voteDone */true,
-            /* authentic */false
-          ];
-          tmp$1 = /* tuple */[
-            t,
-            t,
-            t,
-            t
-          ];
-        }
-        tmp = Belt_List.add(state[/* treasures */7], tmp$1);
+        tmp = Belt_List.add(state[/* treasures */9], Belt_List.sort(treasures, (function (a, b) {
+                    return a[/* type_ */0] - b[/* type_ */0] | 0;
+                  })));
       }
       return /* record */[
-              /* phase : Turn */2,
+              /* phase */(console.log("start turn"), /* Turn */2),
               /* round */state[/* round */1] + 1 | 0,
               /* activePlayer */state[/* activePlayer */2],
               /* playerCount */state[/* playerCount */3],
@@ -385,102 +474,115 @@ function reduce$prime(state, action) {
                               /* actionHistory */p[/* actionHistory */5]
                             ];
                     })),
-              /* remainingTreasures */Belt_Array.slice(state[/* remainingTreasures */6], 4, 12),
+              /* resultReversed */false,
+              /* resultUnknown */-1,
+              /* remainingTreasures */Belt_Array.slice(state[/* remainingTreasures */8], 4, 12),
               /* treasures */tmp
             ];
     }
-  } else {
-    switch (action.tag | 0) {
-      case 0 : 
-          var playerCount = action[0];
-          var roles$1 = Belt_Array.shuffle((function (param) {
-                    return Belt_Array.slice(param, 0, playerCount);
-                  })(roles));
-          var remainingTreasures = Belt_Array.shuffle(allTreasureTypes);
-          var roleIndexes = Belt_Array.mapWithIndex(roles$1, (function (i, role) {
-                  return /* tuple */[
-                          role,
-                          i
-                        ];
-                }));
-          var roleMap = Belt_Map.fromArray(roleIndexes, RoleCmp);
-          var players = Belt_Array.map(roles$1, (function (role) {
-                  var tmp;
-                  if (role >= 5) {
-                    switch (role - 5 | 0) {
-                      case 0 : 
-                          tmp = Belt_Map.getWithDefault(roleMap, /* YaoBuRan */6, -1);
-                          break;
-                      case 1 : 
-                          tmp = Belt_Map.getWithDefault(roleMap, /* LaoChaoFeng */5, -1);
-                          break;
-                      case 2 : 
-                          tmp = -1;
-                          break;
-                      
-                    }
-                  } else {
-                    tmp = -1;
-                  }
-                  return /* record */[
-                          /* role */role,
-                          /* voteTokens */0,
-                          /* drugged */false,
-                          /* blind */role === 3 || role === 2 ? Js_math.random_int(0, 3) : -1,
-                          /* parternerIndex */tmp,
-                          /* actionHistory : array */[]
-                        ];
-                }));
-          return /* record */[
-                  /* phase : Preparation */0,
-                  /* round */0,
-                  /* activePlayer */Js_math.random_int(0, playerCount),
-                  /* playerCount */playerCount,
-                  /* roles */roles$1,
-                  /* players */players,
-                  /* remainingTreasures */remainingTreasures,
-                  /* treasures : [] */0
-                ];
-      case 1 : 
-          return /* record */[
-                  /* phase : VoteRole */6,
-                  /* round */state[/* round */1],
-                  /* activePlayer */state[/* activePlayer */2],
-                  /* playerCount */Caml_int32.imul(action[0], action[1]),
-                  /* roles */state[/* roles */4],
-                  /* players */state[/* players */5],
-                  /* remainingTreasures */state[/* remainingTreasures */6],
-                  /* treasures */state[/* treasures */7]
-                ];
-      case 2 : 
-          return state;
-      
+  } else if (action.tag) {
+    var action$1 = action[0];
+    if (action$1) {
+      var index = action$1[0];
+      return /* record */[
+              /* phase */state[/* phase */0],
+              /* round */state[/* round */1],
+              /* activePlayer */state[/* activePlayer */2],
+              /* playerCount */state[/* playerCount */3],
+              /* roles */state[/* roles */4],
+              /* players */Belt_Array.mapWithIndex(state[/* players */5], (function (i, p) {
+                      var match = i !== playerIndex;
+                      if (match) {
+                        return p;
+                      } else {
+                        var match$1 = Belt_List.get(state[/* treasures */9], state[/* round */1] - 1 | 0);
+                        return /* record */[
+                                /* role */p[/* role */0],
+                                /* voteTokens */p[/* voteTokens */1],
+                                /* drugged */p[/* drugged */2],
+                                /* blind */p[/* blind */3],
+                                /* parternerIndex */p[/* parternerIndex */4],
+                                /* actionHistory */Belt_Array.concat(p[/* actionHistory */5], /* array */[/* IdentifyTreasure */[
+                                        index,
+                                        identifyTreasure(state, match$1 !== undefined ? match$1 : /* [] */0, p, index)
+                                      ]])
+                              ];
+                      }
+                    })),
+              /* resultReversed */state[/* resultReversed */6],
+              /* resultUnknown */state[/* resultUnknown */7],
+              /* remainingTreasures */state[/* remainingTreasures */8],
+              /* treasures */state[/* treasures */9]
+            ];
+    } else {
+      return state;
     }
+  } else {
+    var playerCount = action[0];
+    var roles$1 = Belt_Array.shuffle((function (param) {
+              return Belt_Array.slice(param, 0, playerCount);
+            })(roles));
+    var remainingTreasures = Belt_Array.shuffle(allTreasureTypes);
+    var roleIndexes = Belt_Array.mapWithIndex(roles$1, (function (i, role) {
+            return /* tuple */[
+                    role,
+                    i
+                  ];
+          }));
+    var roleMap = Belt_Map.fromArray(roleIndexes, RoleCmp);
+    var players = Belt_Array.map(roles$1, (function (role) {
+            var tmp;
+            if (role >= 5) {
+              switch (role - 5 | 0) {
+                case 0 : 
+                    tmp = Belt_Map.getWithDefault(roleMap, /* YaoBuRan */6, -1);
+                    break;
+                case 1 : 
+                    tmp = Belt_Map.getWithDefault(roleMap, /* LaoChaoFeng */5, -1);
+                    break;
+                case 2 : 
+                    tmp = -1;
+                    break;
+                
+              }
+            } else {
+              tmp = -1;
+            }
+            return /* record */[
+                    /* role */role,
+                    /* voteTokens */0,
+                    /* drugged */false,
+                    /* blind */role === 3 || role === 2 ? Js_math.random_int(1, 4) : -1,
+                    /* parternerIndex */tmp,
+                    /* actionHistory : array */[]
+                  ];
+          }));
+    return /* record */[
+            /* phase : Preparation */0,
+            /* round */0,
+            /* activePlayer */Js_math.random_int(0, playerCount),
+            /* playerCount */playerCount,
+            /* roles */roles$1,
+            /* players */players,
+            /* resultReversed */false,
+            /* resultUnknown */-1,
+            /* remainingTreasures */remainingTreasures,
+            /* treasures : [] */0
+          ];
   }
 }
 
-function authorized(index, state, action) {
-  if (typeof action === "number") {
-    return index === 0;
+function authorized(playerIndex, state, action) {
+  if (typeof action === "number" || action.tag !== 1) {
+    return playerIndex === 0;
   } else {
-    switch (action.tag | 0) {
-      case 1 : 
-          return true;
-      case 2 : 
-          return state[/* activePlayer */2] === index;
-      default:
-        return index === 0;
-    }
+    return state[/* activePlayer */2] === playerIndex;
   }
 }
 
 function validate(state, action) {
-  if (typeof action === "number") {
-    if (action !== 0) {
-      return state[/* phase */0] === /* TurnUpkeep */1;
-    } else {
-      return false;
-    }
+  if (typeof action === "number" && action !== 0) {
+    return state[/* phase */0] === /* TurnUpkeep */1;
   } else {
     return true;
   }
@@ -495,7 +597,7 @@ function reduce(state, jsAction) {
       var action$1 = match;
       var match$1 = authorized(playerIndex, state$1, action$1) && validate(state$1, action$1);
       if (match$1) {
-        return reduce$prime(state$1, action$1);
+        return reduce$prime(playerIndex, state$1, action$1);
       } else {
         return state$1;
       }
@@ -515,6 +617,7 @@ exports.allTreasureTypes = allTreasureTypes;
 exports.treasureNum = treasureNum;
 exports.TreasureCmp = TreasureCmp;
 exports.InitState = InitState;
+exports.identifyTreasure = identifyTreasure;
 exports.Decode = Decode;
 exports.Encode = Encode;
 exports.reduce$prime = reduce$prime;

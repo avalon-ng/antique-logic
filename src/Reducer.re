@@ -94,32 +94,32 @@ module TreasureCmp =
     let cmp = (r1, r2) => treasureNum(r1) - treasureNum(r2);
   });
 
-type action =
-  | Init(int)
-  | PrepareTurn /* enter TurnUpkeep phase */
-  | StartTurn
-  | Dramatic(int, int)
-  | IdentifyTreasure(int);
-
 type treasureState =
   | Authentic
   | Fake
   | Unknown;
 
-type gameAction =
+type turnAction =
   /* maybe instead of int, use a beast head variant here */
-  | IdentifyTreasure(int)
-  /* maybe instead of int, use a beast head variant here */
-  | VoteTreasure(int)
-  | VotePlayer(int);
+  | IdentifyTreasure(int, treasureState)
+  | Nop;
+/* maybe instead of int, use a beast head variant here */
+/* | VoteTreasure(int) */
+/* | VotePlayer(int); */
+
+type action =
+  | Init(int)
+  | PrepareTurn /* enter TurnUpkeep phase */
+  | StartTurn
+  | TurnAction(turnAction);
 
 type player = {
   role,
   voteTokens: int,
-  drugged: bool,
-  blind: int,
+  drugged: bool, /* YaoBuRan */
+  blind: int, /* HuangYanYan, MuHuJiaNai */
   parternerIndex: int,
-  actionHistory: array(gameAction),
+  actionHistory: array(turnAction),
 };
 
 type playerIndex = int;
@@ -141,8 +141,10 @@ type game = {
   playerCount: int,
   roles: array(role),
   players: array(player),
+  resultReversed: bool, /* LaoChaoFeng */
+  resultUnknown: int, /* ZhengGuoQu */
   remainingTreasures: array(treasureType),
-  treasures: list((treasure, treasure, treasure, treasure)),
+  treasures: list(list(treasure)),
 };
 
 type meta = {playerIndex: int};
@@ -155,10 +157,49 @@ module InitState = {
     activePlayer: 0,
     roles: [||],
     players: [||],
+    resultReversed: false,
+    resultUnknown: (-1),
     remainingTreasures: [||],
     treasures: [],
   };
 };
+
+let identifyTreasure =
+    (
+      {round, resultReversed, resultUnknown},
+      treasures,
+      player,
+      treasureIndex,
+    ) =>
+  switch (Belt.List.get(treasures, treasureIndex)) {
+  | Some(treasure) =>
+    switch (player.role) {
+    | JiYunFu => treasure.authentic ? Authentic : Fake
+    | LaoChaoFeng /* bad guys */
+    | YaoBuRan
+    | ZhengGuoQu => treasure.authentic ? Authentic : Fake
+    | _ =>
+      resultUnknown == treasureIndex ?
+        Unknown :
+        (
+          switch (player.role) {
+          | MuHuJiaNai
+          | HuangYanYan =>
+            player.blind == round ?
+              Unknown :
+              resultReversed ?
+                treasure.authentic ? Fake : Authentic :
+                treasure.authentic ? Authentic : Fake
+          | XuYuan =>
+            resultReversed ?
+              treasure.authentic ? Fake : Authentic :
+              treasure.authentic ? Authentic : Fake
+          | _ => Unknown
+          }
+        )
+    }
+  | None => Unknown
+  };
 
 /* mostly, solely, for actions */
 module Decode = {
@@ -173,8 +214,16 @@ module Decode = {
     | "init" => Some(Init(json |> field("playerCount", int)))
     | "prepare_turn" => Some(PrepareTurn)
     | "start_turn" => Some(StartTurn)
-    | "dramatic_action" =>
-      Some(Dramatic(json |> field("a", int), json |> field("b", int)))
+    | "turn_action" =>
+      Some(
+        TurnAction(
+          switch (json |> field("action", string)) {
+          | "identify_treasure" =>
+            IdentifyTreasure(json |> field("index", int), Unknown)
+          | _ => Nop
+          },
+        ),
+      )
     | _ => None
     };
 };
@@ -213,6 +262,21 @@ module Encode = {
       | Pig => "pig"
       },
     );
+  let treasureState = s =>
+    string(
+      switch (s) {
+      | Authentic => "real"
+      | Fake => "fake"
+      | Unknown => "unknown"
+      },
+    );
+
+  let actionHistory = turnAction =>
+    switch (turnAction) {
+    | IdentifyTreasure(index, state) =>
+      object_([("index", int(index)), ("state", treasureState(state))])
+    | Nop => string("nop")
+    };
 
   let player = player =>
     object_([
@@ -220,7 +284,7 @@ module Encode = {
       ("parternerIndex", int(player.parternerIndex)),
       /* ("drugged", bool(player.drugged)), */
       /* ("blind", int(player.blind)), */
-      /* ("actionHistory", array) */
+      ("actionHistory", array(actionHistory, player.actionHistory)),
     ]);
 
   let game = (state: game) =>
@@ -248,7 +312,7 @@ module Encode = {
     ]);
 };
 
-let reduce' = (state: game, action) =>
+let reduce' = (playerIndex, state: game, action) =>
   switch (action) {
   | Init(playerCount) =>
     let roles =
@@ -265,8 +329,8 @@ let reduce' = (state: game, action) =>
           actionHistory: [||],
           blind:
             switch (role) {
-            | MuHuJiaNai => Js.Math.random_int(0, 3)
-            | HuangYanYan => Js.Math.random_int(0, 3)
+            | MuHuJiaNai => Js.Math.random_int(1, 4)
+            | HuangYanYan => Js.Math.random_int(1, 4)
             | _ => (-1)
             },
           parternerIndex:
@@ -293,8 +357,13 @@ let reduce' = (state: game, action) =>
    */
   | StartTurn => {
       ...state,
-      phase: Turn,
+      phase: {
+        Js.log("start turn");
+        Turn;
+      },
       round: state.round + 1,
+      resultReversed: false,
+      resultUnknown: (-1),
       players:
         /* add 2 more vote tokens */
         Belt.Array.map(state.players, p =>
@@ -315,43 +384,62 @@ let reduce' = (state: game, action) =>
                 {type_: t3, votes: [], voteDone: false, authentic: false},
                 {type_: t4, votes: [], voteDone: false, authentic: false},
               ];
-              let treasures =
-                Belt.List.sort(treasures, (a, b) =>
-                  treasureNum(a.type_) - treasureNum(b.type_)
-                );
-              switch (treasures) {
-              | [t1, t2, t3, t4] => (t1, t2, t3, t4)
-              | _ =>
-                let t = {
-                  type_: Rat,
-                  votes: [],
-                  voteDone: true,
-                  authentic: false,
-                };
-                (t, t, t, t);
-              };
+              Belt.List.sort(treasures, (a, b) =>
+                treasureNum(a.type_) - treasureNum(b.type_)
+              );
             },
           )
         | _ => state.treasures
         },
     }
-  | Dramatic(a, b) => {...state, phase: VoteRole, playerCount: a * b}
-  | IdentifyTreasure(_) => state
+  | TurnAction(action) =>
+    switch (action) {
+    | IdentifyTreasure(index, _) => {
+        ...state,
+        players:
+          Belt.Array.mapWithIndex(state.players, (i, p) =>
+            i != playerIndex ?
+              p :
+              {
+                ...p,
+                actionHistory:
+                  Belt.Array.concat(
+                    p.actionHistory,
+                    [|
+                      IdentifyTreasure(
+                        index,
+                        identifyTreasure(
+                          state,
+                          switch (
+                            Belt.List.get(state.treasures, state.round - 1)
+                          ) {
+                          | Some(treasures) => treasures
+                          | None => []
+                          },
+                          p,
+                          index,
+                        ),
+                      ),
+                    |],
+                  ),
+              }
+          ),
+      }
+    | _ => state
+    }
   };
 
-let authorized = (index, state, action) =>
+let authorized = (playerIndex, state, action) =>
   switch (action) {
-  | Init(_) => index == 0
-  | PrepareTurn => index == 0
-  | StartTurn => index == 0
-  | IdentifyTreasure(_) => state.activePlayer == index
-  | _ => true
+  | Init(_) => playerIndex == 0
+  | PrepareTurn => playerIndex == 0
+  | StartTurn => playerIndex == 0
+  | TurnAction(_) => state.activePlayer == playerIndex
   };
 
 let validate = (state, action) =>
   switch (action) {
   | StartTurn => state.phase == TurnUpkeep
-  | PrepareTurn => false
   | _ => true
   };
 
@@ -363,7 +451,7 @@ let reduce = (state: option(game), jsAction) => {
     switch (Decode.action(jsAction)) {
     | Some(action) =>
       authorized(playerIndex, state, action) && validate(state, action) ?
-        reduce'(state, action) : state
+        reduce'(playerIndex, state, action) : state
     | None => state
     }
   | None => InitState.game

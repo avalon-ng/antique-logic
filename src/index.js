@@ -6,7 +6,7 @@ function makeGame(playerCount) {
   return function transition(playerIndex, action) {
     state = reduce(state, {...action, meta: {playerIndex}})
     const jsState = toJs(state)
-    console.log(jsState)
+    console.log(JSON.stringify(jsState, null, 2))
     return jsState
   }
 }
@@ -20,4 +20,14 @@ reducer(0, {
 
 reducer(0, { type: 'prepare_turn' })
 reducer(0, { type: 'start_turn' })
+
+for(let i = 0; i < 6; i ++) {
+  for(let j = 0; j < 4; j++) {
+    reducer(i, {
+      type: 'turn_action',
+      action: 'identify_treasure',
+      index: j,
+    });
+  }
+}
 
