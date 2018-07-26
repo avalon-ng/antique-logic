@@ -118,6 +118,8 @@ type player = {
   voteTokens: int,
   drugged: bool, /* YaoBuRan */
   blind: int, /* HuangYanYan, MuHuJiaNai */
+  identified: bool,
+  specialExecuted: bool,
   parternerIndex: int,
   actionHistory: array(turnAction),
 };
@@ -312,7 +314,7 @@ module Encode = {
     ]);
 };
 
-let reduce' = (playerIndex, state: game, action) =>
+let reduce' = (state: game, action, playerIndex) =>
   switch (action) {
   | Init(playerCount) =>
     let roles =
@@ -326,6 +328,8 @@ let reduce' = (playerIndex, state: game, action) =>
           role,
           voteTokens: 0,
           drugged: false,
+          identified: false,
+          specialExecuted: false,
           actionHistory: [||],
           blind:
             switch (role) {
@@ -357,20 +361,21 @@ let reduce' = (playerIndex, state: game, action) =>
    */
   | StartTurn => {
       ...state,
-      phase: {
-        Js.log("start turn");
-        Turn;
-      },
+      phase: Turn,
       round: state.round + 1,
       resultReversed: false,
       resultUnknown: (-1),
       players:
-        /* add 2 more vote tokens */
+        /* add 2 more vote tokens and reset identify/special state */
         Belt.Array.map(state.players, p =>
-          {...p, voteTokens: p.voteTokens + 2}
+          {
+            ...p,
+            voteTokens: p.voteTokens + 2,
+            identified: false,
+            specialExecuted: false,
+          }
         ),
-      remainingTreasures:
-        Belt.Array.slice(state.remainingTreasures, ~offset=4, ~len=12),
+      remainingTreasures: Belt.Array.sliceToEnd(state.remainingTreasures, 4),
       treasures:
         /* XXX this part we won't ever reach [] case, but still forced to handle it */
         switch (Belt.Array.slice(state.remainingTreasures, ~offset=0, ~len=4)) {
@@ -402,6 +407,7 @@ let reduce' = (playerIndex, state: game, action) =>
               p :
               {
                 ...p,
+                identified: true,
                 actionHistory:
                   Belt.Array.concat(
                     p.actionHistory,
@@ -429,7 +435,7 @@ let reduce' = (playerIndex, state: game, action) =>
     }
   };
 
-let authorized = (playerIndex, state, action) =>
+let authorized = (state, action, playerIndex) =>
   switch (action) {
   | Init(_) => playerIndex == 0
   | PrepareTurn => playerIndex == 0
@@ -437,9 +443,15 @@ let authorized = (playerIndex, state, action) =>
   | TurnAction(_) => state.activePlayer == playerIndex
   };
 
-let validate = (state, action) =>
+let validate = (state, action, playerIndex) =>
   switch (action) {
   | StartTurn => state.phase == TurnUpkeep
+  | TurnAction(a) =>
+    switch (a) {
+    | IdentifyTreasure(_, _) =>
+      ! Belt.Array.getUnsafe(state.players, playerIndex).identified
+    | _ => false
+    }
   | _ => true
   };
 
@@ -450,8 +462,9 @@ let reduce = (state: option(game), jsAction) => {
   | Some(state) =>
     switch (Decode.action(jsAction)) {
     | Some(action) =>
-      authorized(playerIndex, state, action) && validate(state, action) ?
-        reduce'(playerIndex, state, action) : state
+      authorized(state, action, playerIndex)
+      && validate(state, action, playerIndex) ?
+        reduce'(state, action, playerIndex) : state
     | None => state
     }
   | None => InitState.game

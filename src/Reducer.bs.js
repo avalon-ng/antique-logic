@@ -303,12 +303,12 @@ function player(player$1) {
               /* :: */[
                 /* tuple */[
                   "parternerIndex",
-                  player$1[/* parternerIndex */4]
+                  player$1[/* parternerIndex */6]
                 ],
                 /* :: */[
                   /* tuple */[
                     "actionHistory",
-                    Json_encode.array(actionHistory, player$1[/* actionHistory */5])
+                    Json_encode.array(actionHistory, player$1[/* actionHistory */7])
                   ],
                   /* [] */0
                 ]
@@ -394,7 +394,7 @@ var Encode = /* module */[
   /* game */game$1
 ];
 
-function reduce$prime(playerIndex, state, action) {
+function reduce$prime(state, action, playerIndex) {
   if (typeof action === "number") {
     if (action === 0) {
       return /* record */[
@@ -459,7 +459,7 @@ function reduce$prime(playerIndex, state, action) {
                   })));
       }
       return /* record */[
-              /* phase */(console.log("start turn"), /* Turn */2),
+              /* phase : Turn */2,
               /* round */state[/* round */1] + 1 | 0,
               /* activePlayer */state[/* activePlayer */2],
               /* playerCount */state[/* playerCount */3],
@@ -470,13 +470,15 @@ function reduce$prime(playerIndex, state, action) {
                               /* voteTokens */p[/* voteTokens */1] + 2 | 0,
                               /* drugged */p[/* drugged */2],
                               /* blind */p[/* blind */3],
-                              /* parternerIndex */p[/* parternerIndex */4],
-                              /* actionHistory */p[/* actionHistory */5]
+                              /* identified */false,
+                              /* specialExecuted */false,
+                              /* parternerIndex */p[/* parternerIndex */6],
+                              /* actionHistory */p[/* actionHistory */7]
                             ];
                     })),
               /* resultReversed */false,
               /* resultUnknown */-1,
-              /* remainingTreasures */Belt_Array.slice(state[/* remainingTreasures */8], 4, 12),
+              /* remainingTreasures */Belt_Array.sliceToEnd(state[/* remainingTreasures */8], 4),
               /* treasures */tmp
             ];
     }
@@ -501,8 +503,10 @@ function reduce$prime(playerIndex, state, action) {
                                 /* voteTokens */p[/* voteTokens */1],
                                 /* drugged */p[/* drugged */2],
                                 /* blind */p[/* blind */3],
-                                /* parternerIndex */p[/* parternerIndex */4],
-                                /* actionHistory */Belt_Array.concat(p[/* actionHistory */5], /* array */[/* IdentifyTreasure */[
+                                /* identified */true,
+                                /* specialExecuted */p[/* specialExecuted */5],
+                                /* parternerIndex */p[/* parternerIndex */6],
+                                /* actionHistory */Belt_Array.concat(p[/* actionHistory */7], /* array */[/* IdentifyTreasure */[
                                         index,
                                         identifyTreasure(state, match$1 !== undefined ? match$1 : /* [] */0, p, index)
                                       ]])
@@ -553,6 +557,8 @@ function reduce$prime(playerIndex, state, action) {
                     /* voteTokens */0,
                     /* drugged */false,
                     /* blind */role === 3 || role === 2 ? Js_math.random_int(1, 4) : -1,
+                    /* identified */false,
+                    /* specialExecuted */false,
                     /* parternerIndex */tmp,
                     /* actionHistory : array */[]
                   ];
@@ -572,7 +578,7 @@ function reduce$prime(playerIndex, state, action) {
   }
 }
 
-function authorized(playerIndex, state, action) {
+function authorized(state, action, playerIndex) {
   if (typeof action === "number" || action.tag !== 1) {
     return playerIndex === 0;
   } else {
@@ -580,9 +586,19 @@ function authorized(playerIndex, state, action) {
   }
 }
 
-function validate(state, action) {
-  if (typeof action === "number" && action !== 0) {
-    return state[/* phase */0] === /* TurnUpkeep */1;
+function validate(state, action, playerIndex) {
+  if (typeof action === "number") {
+    if (action === 0) {
+      return true;
+    } else {
+      return state[/* phase */0] === /* TurnUpkeep */1;
+    }
+  } else if (action.tag) {
+    if (action[0]) {
+      return !state[/* players */5][playerIndex][/* identified */4];
+    } else {
+      return false;
+    }
   } else {
     return true;
   }
@@ -595,9 +611,9 @@ function reduce(state, jsAction) {
     var match = action(jsAction);
     if (match !== undefined) {
       var action$1 = match;
-      var match$1 = authorized(playerIndex, state$1, action$1) && validate(state$1, action$1);
+      var match$1 = authorized(state$1, action$1, playerIndex) && validate(state$1, action$1, playerIndex);
       if (match$1) {
-        return reduce$prime(playerIndex, state$1, action$1);
+        return reduce$prime(state$1, action$1, playerIndex);
       } else {
         return state$1;
       }
