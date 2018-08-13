@@ -247,6 +247,20 @@ module Encode = {
       },
     );
 
+  let roleAbbr = role =>
+    string(
+      switch (role) {
+      | XuYuan => {js|許|js}
+      | FangZhen => {js|方|js}
+      | MuHuJiaNai => {js|木|js}
+      | HuangYanYan => {js|黃|js}
+      | JiYunFu => {js|姬|js}
+      | LaoChaoFeng => {js|老|js}
+      | YaoBuRan => {js|藥|js}
+      | ZhengGuoQu => {js|鄭|js}
+      },
+    );
+
   let treasureType = t =>
     string(
       switch (t) {
@@ -264,6 +278,7 @@ module Encode = {
       | Pig => "pig"
       },
     );
+
   let treasureState = s =>
     string(
       switch (s) {
@@ -283,6 +298,7 @@ module Encode = {
   let player = player =>
     object_([
       ("role", role(player.role)),
+      ("roleAbbr", roleAbbr(player.role)),
       ("parternerIndex", int(player.parternerIndex)),
       /* ("drugged", bool(player.drugged)), */
       /* ("blind", int(player.blind)), */

@@ -232,6 +232,28 @@ function role(role$1) {
   }
 }
 
+function roleAbbr(role) {
+  switch (role) {
+    case 0 : 
+        return "許";
+    case 1 : 
+        return "方";
+    case 2 : 
+        return "木";
+    case 3 : 
+        return "黃";
+    case 4 : 
+        return "姬";
+    case 5 : 
+        return "老";
+    case 6 : 
+        return "藥";
+    case 7 : 
+        return "鄭";
+    
+  }
+}
+
 function treasureType(t) {
   switch (t) {
     case 0 : 
@@ -302,15 +324,21 @@ function player(player$1) {
               ],
               /* :: */[
                 /* tuple */[
-                  "parternerIndex",
-                  player$1[/* parternerIndex */6]
+                  "roleAbbr",
+                  roleAbbr(player$1[/* role */0])
                 ],
                 /* :: */[
                   /* tuple */[
-                    "actionHistory",
-                    Json_encode.array(actionHistory, player$1[/* actionHistory */7])
+                    "parternerIndex",
+                    player$1[/* parternerIndex */6]
                   ],
-                  /* [] */0
+                  /* :: */[
+                    /* tuple */[
+                      "actionHistory",
+                      Json_encode.array(actionHistory, player$1[/* actionHistory */7])
+                    ],
+                    /* [] */0
+                  ]
                 ]
               ]
             ]);
@@ -387,6 +415,7 @@ function game$1(state) {
 
 var Encode = /* module */[
   /* role */role,
+  /* roleAbbr */roleAbbr,
   /* treasureType */treasureType,
   /* treasureState */treasureState,
   /* actionHistory */actionHistory,
